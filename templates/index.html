@@ -1,0 +1,3305 @@
+﻿<html lang="zh-TW"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ButterLayer</title>
+  <link rel="icon" type="image/x-icon" href="/cover/raw toas..ico">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: "Segoe UI","Microsoft JhengHei",sans-serif; background:#f0f4f8; min-height:100vh;
+      background-image: url('/cover/toast.png');
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+      background-repeat: no-repeat;
+    }
+
+    .topbar {
+      background:#ffffff; color:#1814ff; height:48px;
+      padding:0 1.2rem; display:flex; align-items:center;
+      justify-content:space-between; position:sticky; top:0; z-index:200;
+      box-shadow:0 2px 8px rgba(0,0,0,0.25);
+    }
+    .topbar h1 { font-size:1rem; font-weight:700; display:flex; align-items:center; gap:0.5rem; }
+    .topbar-logo { width:28px; height:28px; object-fit:contain; border-radius:4px; }
+    .topbar-actions { display:flex; gap:0.5rem; align-items:center; }
+    .topbar-btn {
+      padding:0.32rem 0.85rem; border:1.5px solid #1814ff;
+      border-radius:6px; background:#1814ff; color:#fff; font-size:0.8rem;
+      cursor:pointer; transition:background .15s; text-decoration:none; display:inline-block;
+    }
+    .topbar-btn:hover { background:rgba(255,255,255,0.15); }
+    .topbar-btn.green { background:#1814ff; border-color:#1814ff; }
+    .topbar-btn.green:hover { background:#ffffff; }
+
+    #upload-panel {
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      padding:2rem; min-height:calc(100vh - 48px); gap:1rem;
+    }
+    .card {
+      background:#fff; border-radius:16px; box-shadow:0 8px 32px rgba(0,0,0,0.10);
+      padding:2.2rem 2.8rem; width:100%; max-width:520px;
+    }
+    .card h2 { font-size:1.8rem; color:#1814ff; text-align:center; margin-bottom:0.2rem; }
+    .subtitle { text-align:center; color:#1814ff; font-size:0.6rem; margin-bottom:1.5rem; }
+    label { display:block; font-size:0.8rem; font-weight:600; color:#64748b; margin-bottom:0.28rem; }
+    input[type=text], input[type=password], select {
+      width:100%; padding:0.52rem 0.82rem; border:1.5px solid #d1d5db; border-radius:8px;
+      font-size:0.88rem; color:#64748b; background:#f9fafb; transition:border-color .2s; margin-bottom:0.3rem;
+    }
+    input:focus, select:focus { outline:none; border-color:#2E74B5; background:#fff; }
+    .drop-zone {
+      border:2.5px dashed #ffbf00; border-radius:12px; background:#fffbe6;
+      padding:1.5rem 1rem; text-align:center; cursor:pointer;
+      transition:background .2s,border-color .2s; margin-bottom:1rem; position:relative;
+    }
+    .drop-zone.drag-over { background:#dbeafe; border-color:#2E74B5; }
+    .drop-zone input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+    .drop-zone .icon { font-size:1.8rem; }
+    .drop-zone p { color:#64748b; font-size:0.7rem; }
+    .drop-zone .filename { font-weight:400; color:#64748b; margin-top:0.15rem; }
+    .btn {
+      display:block; width:100%; padding:0.75rem; background:#1814ff; color:#fff;
+      border:none; border-radius:10px; font-size:0.93rem; font-weight:600; cursor:pointer;
+    }
+    .btn:hover { background:#1e5a9a; }
+    .btn:disabled { background:#9ca3af; cursor:not-allowed; }
+    .progress-wrap { margin-top:1.1rem; display:none; }
+    .progress-bar-bg { background:#e5e7eb; border-radius:999px; height:10px; overflow:hidden; margin-bottom:0.4rem; }
+    .progress-bar { height:100%; background:linear-gradient(90deg,#2E74B5,#60a5fa); border-radius:999px; transition:width .4s; width:0%; }
+    #status-msg { font-size:0.82rem; color:#374151; text-align:center; }
+    .error-box {
+      background:#eef5ff; border:1px solid #1814ff; border-radius:8px;
+      padding:0.6rem 1rem; color:#1814ff; font-size:0.82rem; margin-top:0.8rem; display:none;
+    }
+    .recent-job-item { display:flex; align-items:center; justify-content:space-between; padding:0.45rem 0; border-bottom:1px solid #f3f4f6; }
+    .recent-job-item:last-child { border-bottom:none; }
+    .recent-job-name { font-size:0.85rem; color:#1e3a5f; cursor:pointer; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .recent-job-name:hover { text-decoration:underline; }
+    .recent-job-date { font-size:0.75rem; color:#9ca3af; margin-left:0.5rem; white-space:nowrap; }
+    .recent-job-del { background:none; border:none; color:#d1d5db; cursor:pointer; font-size:0.9rem; margin-left:0.4rem; padding:0 0.2rem; }
+    .recent-job-del:hover { color:#ef4444; }
+    details summary { cursor:pointer; font-size:0.7rem; color:#6b7a8d; user-select:none; margin-top:0.5rem; margin-bottom:0.7rem; }
+    hr.div { border:none; border-top:1px solid #e5e7eb; margin:0.85rem 0; }
+
+    /* ── Split view ── */
+    #split-panel { display:none; height:calc(100vh - 48px); background:#fff; }
+    .split-container {
+      display:grid;
+      grid-template-columns:minmax(280px, var(--left-pane-width, 1fr)) 7px minmax(280px, var(--right-pane-width, 1fr));
+      height:100%;
+    }
+    .split-pane { display:flex; flex-direction:column; overflow:hidden; border-right:2px solid #d1d5db; }
+    .split-pane:last-child { border-right:none; }
+    .split-resizer {
+      background:#e5e7eb; cursor:col-resize; position:relative; z-index:20;
+      border-left:1px solid #d1d5db; border-right:1px solid #d1d5db;
+    }
+    .split-resizer::after {
+      content:""; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+      width:3px; height:38px; border-radius:999px; background:#94a3b8;
+    }
+    .split-resizer:hover, .split-container.resizing .split-resizer { background:#dbeafe; }
+
+    .pane-header {
+      padding:0 1rem; background:#f8fafc; border-bottom:1px solid #e5e7eb;
+      display:flex; align-items:center; gap:0.45rem; flex-shrink:0; height:42px;
+    }
+    .pane-header h3 { font-size:0.83rem; font-weight:500; color:#64748b; }
+    .pane-badge {
+      font-size:0.68rem; padding:0.1rem 0.48rem; border-radius:999px; font-weight:600;
+      min-width:4.8rem; text-align:center;
+    }
+    .badge-original { background:#dbeafe; color:#1814ff; }
+    .badge-translated { background:#dbeafe; color:#1814ff; }
+    .pane-action {
+      border:1px solid #d1d5db; background:#fff; border-radius:6px;
+      padding:0.18rem 0.55rem; font-size:0.74rem; color:#64748b; cursor:pointer;
+    }
+    .pane-action:hover { background:#f8fafc; }
+    .pane-action.active { background:#dbeafe; border-color:#2E74B5; color:#1d4ed8; font-weight:600; }
+    .page-nav { display:flex; align-items:center; gap:0.35rem; margin-left:auto; }
+    .page-nav button {
+      border:1px solid #d1d5db; background:#fff; border-radius:5px;
+      padding:0 0.5rem; font-size:0.76rem; cursor:pointer; color:#374151;
+      height:1.72rem; box-sizing:border-box; display:flex; align-items:center;
+    }
+    .page-nav button:hover { background:#f1f5f9; }
+    .page-nav button:disabled { opacity:0.35; cursor:not-allowed; }
+    .page-nav span { font-size:0.76rem; color:#6b7a8d; white-space:nowrap; }
+    .scale-ctrl { display:flex; align-items:center; gap:0.28rem; }
+    .scale-ctrl button {
+      border:1px solid #d1d5db; background:#fff; border-radius:4px;
+      width:21px; height:21px; font-size:0.83rem; cursor:pointer; line-height:1;
+    }
+    .scale-ctrl button:hover { background:#f1f5f9; }
+    .scale-ctrl span { font-size:0.72rem; color:#6b7a8d; min-width:34px; text-align:center; }
+    .format-ctrl { margin-left:auto; display:flex; align-items:center; gap:0.45rem; }
+    .format-ctrl .font-size-display {
+      font-size:0.72rem; color:#9ca3af; min-width:2.2rem; text-align:center;
+    }
+
+    .hint-bar {
+      background:#fffbeb; border-bottom:3px solid #ffbf00;
+      padding:0.3rem 0.5rem; font-size:0.7rem; color:#b87c14;
+      text-align:center; flex-shrink:0;
+    }
+
+    /* PDF pane */
+    .pdf-pane-body {
+      flex:1; overflow:auto; background:#374151;
+      display:flex; flex-direction:column; align-items:center; padding:1rem;
+    }
+    /* Stack canvas + highlight canvas + click overlay */
+    .pdf-page-wrap {
+      position:relative;
+      box-shadow:0 4px 20px rgba(0,0,0,0.4);
+      cursor:crosshair;
+      flex-shrink:0;
+    }
+    #pdf-canvas { display:block; }
+    #hl-canvas {
+      position:absolute; top:0; left:0;
+      pointer-events:none;
+    }
+    #click-overlay {
+      position:absolute; top:0; left:0; width:100%; height:100%;
+      cursor:pointer;
+      z-index: 10;
+    }
+    #text-overlay-layer {
+      position:absolute; top:0; left:0; width:100%; height:100%;
+      pointer-events:none;
+      z-index: 5;
+    }
+    .overlay-text-box {
+      position:absolute;
+      background:#fff;
+      color:#0f172a;
+      overflow:hidden;
+      text-align:justify;
+      word-break:break-all;
+      white-space:pre-wrap;
+      box-sizing:border-box;
+      padding:2px;
+      line-height: 1.42;
+    }
+
+    /* Translation pane */
+    .trans-pane-outer {
+      flex:1; overflow:auto; background:#6b7280;
+      display:flex; flex-direction:column; align-items:flex-start;
+    }
+    .word-paper {
+      background:#fff; width:794px; flex-shrink:0;
+      padding:1.5rem 2rem; box-sizing:border-box;
+      min-height:1123px;
+      box-shadow:0 2px 14px rgba(0,0,0,0.38);
+      margin:1.2rem 1.5rem 1.2rem max(1.5rem, calc(50% - 397px));
+    }
+    .trans-pane-body {
+      font-size:0.85rem; line-height:1.7; color:#374151;
+      outline:none; min-height:4rem;
+    }
+    .trans-para {
+      margin-bottom:0.55rem; padding:0 0.5rem;
+      border-radius:5px; border-left:3px solid transparent;
+      transition:background .25s, border-color .25s;
+      min-height:1.4em; white-space:pre-wrap; word-break:break-word;
+      line-height:1.7;
+    }
+    .trans-image-block {
+      position:relative; margin:0.75rem 0; padding:0.55rem;
+      border:1px solid #cbd5e1; border-radius:10px; background:#f8fafc;
+      cursor:grab;
+      user-select:none; touch-action:none;
+    }
+    .trans-image-block.dragging {
+      opacity:0.55;
+      cursor:grabbing;
+    }
+    .trans-image-block img {
+      display:block; max-width:100%; max-height:420px; height:auto; margin:0 auto;
+      border-radius:8px; box-shadow:0 3px 14px rgba(15,23,42,0.12);
+    }
+    .trans-image-meta {
+      margin-top:0.35rem; font-size:0.72rem; color:#64748b; text-align:center;
+    }
+    .image-remove-btn {
+      position:absolute; top:8px; right:8px; border:none; border-radius:999px;
+      background:rgba(15,23,42,0.72); color:#fff; width:24px; height:24px;
+      cursor:pointer; font-size:0.85rem; line-height:1;
+    }
+    .image-remove-btn:hover { background:rgba(185,28,28,0.92); }
+    .image-resize-handle {
+      position:absolute; bottom:6px; right:6px; width:14px; height:14px;
+      border-right:3px solid #64748b; border-bottom:3px solid #64748b;
+      border-radius:0 0 3px 0; cursor:se-resize; opacity:0;
+      transition:opacity 0.15s;
+    }
+    .trans-image-block:hover .image-resize-handle { opacity:1; }
+    .trans-image-block.resizing .image-resize-handle { opacity:1; }
+    .trans-para.highlighted {
+      background:#fef9c3; border-left-color:#facc15;
+    }
+    .trans-hint {
+      font-size:0.72rem; color:#1814ff; padding:0.28rem 0.7rem;
+      flex-shrink:0; border-top:1px solid #f3f4f6; background:#fafafa;
+      display:flex; align-items:center; justify-content:space-between; gap:0.75rem;
+    }
+    .word-page-break {
+      display:block; margin:0.6rem -2rem; padding:0.3rem 0;
+      text-align:center; background:#e5e7eb; color:#6b7280;
+      font-size:0.68rem; letter-spacing:0.06em; pointer-events:none;
+      box-shadow:0 -3px 6px rgba(0,0,0,0.10), 0 3px 6px rgba(0,0,0,0.10);
+      user-select:none; cursor:default;
+    }
+    .a4-page-break {
+      display:block; position:relative; left:-2rem;
+      width:calc(100% + 4rem); height:20px; margin:0.5rem 0;
+      background:#6b7280;
+      box-shadow:inset 0 4px 7px rgba(0,0,0,0.22), inset 0 -4px 7px rgba(0,0,0,0.22);
+      pointer-events:none; user-select:none; cursor:default; overflow:hidden;
+    }
+    .a4-page-break::after {
+      content:attr(data-page-label);
+      position:absolute; right:0.9rem; top:50%; transform:translateY(-50%);
+      font-size:0.6rem; color:rgba(255,255,255,0.65); letter-spacing:0.05em;
+    }
+    .save-state {
+      white-space:nowrap; font-weight:600;
+    }
+    .save-state.saving { color:#b45309; }
+    .save-state.saved { color:#1814ff; }
+    .save-state.error { color:#b91c1c; }
+    .save-state.idle { color:#9ca3af; }
+    @media (max-width: 900px) {
+      .split-container { grid-template-columns:1fr; }
+      .split-pane { min-height:50vh; border-right:none; border-bottom:2px solid #d1d5db; }
+      .split-pane:last-child { border-bottom:none; }
+      .split-resizer { display:none; }
+      .trans-hint { flex-wrap:wrap; }
+    }
+
+    /* History modal */
+    #history-modal {
+      position:fixed; inset:0; z-index:500;
+      background:rgba(0,0,0,0.45);
+      display:none; align-items:center; justify-content:center;
+    }
+    #history-modal.open { display:flex; }
+    .history-box {
+      background:#fff; border-radius:16px;
+      width:min(94vw,660px); max-height:80vh;
+      display:flex; flex-direction:column;
+      box-shadow:0 16px 48px rgba(0,0,0,0.28);
+    }
+    .history-header {
+      padding:1rem 1.2rem; border-bottom:1px solid #e5e7eb;
+      display:flex; justify-content:space-between; align-items:center; flex-shrink:0;
+    }
+    .history-header span { font-weight:700; font-size:0.95rem; color:#1814ff; }
+    .history-close {
+      background:none; border:none; font-size:1.2rem;
+      color:#9ca3af; cursor:pointer; line-height:1;
+    }
+    .history-close:hover { color:#374151; }
+    .history-body { overflow-y:auto; flex:1; padding:0.4rem 1.2rem 1rem; }
+    .history-empty { text-align:center; color:#9ca3af; font-size:0.85rem; padding:2rem 0; }
+
+    /* Floating word popup */
+    #sent-popup {
+      position:fixed; background:#1e293b; color:#f1f5f9;
+      border-radius:10px; padding:0.75rem 1rem;
+      max-width:360px; min-width:180px;
+      box-shadow:0 6px 24px rgba(0,0,0,0.4);
+      z-index:999; display:none; font-size:0.82rem; line-height:1.65;
+      pointer-events:none;
+    }
+    #sent-popup .sp-label { font-size:0.67rem; color:#94a3b8; margin-bottom:0.3rem; display:block; }
+    #sent-popup .sp-word  { font-size:1rem; font-weight:700; color:#fff; margin-bottom:0.4rem;
+                            padding-bottom:0.35rem; border-bottom:1px solid rgba(255,255,255,0.15); }
+    #sent-popup .sp-text  { color:#cbd5e1; white-space:pre-wrap; }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1><img src="/cover/raw toast.png" class="topbar-logo" alt="logo">ButterLayer</h1>
+  <div class="topbar-actions" id="topbar-actions"></div>
+</div>
+
+<!-- Upload -->
+<div id="upload-panel">
+  <div class="card">
+    <h2>ButterLayer</h2>
+    <p class="subtitle">OCR自動擷取文字 → Gemini 翻譯 → 編輯翻譯對照</p>
+    <form id="upload-form" enctype="multipart/form-data" novalidate>
+      <label for="api-key">Gemini API Key</label>
+      <input type="password" id="api-key" name="api_key" placeholder="AIza..." autocomplete="off">
+      <label for="target-lang">翻譯目標語言</label>
+      <select id="target-lang" name="target_lang">
+        <option value="Traditional Chinese (繁體中文)" selected="">繁體中文</option>
+        <option value="Simplified Chinese (简体中文)">简体中文</option>
+        <option value="English">English</option>
+        <option value="Japanese (日本語)">日本語</option>
+        <option value="Korean (한국어)">한국어</option>
+        <option value="French (Français)">Français</option>
+        <option value="German (Deutsch)">Deutsch</option>
+        <option value="Spanish (Español)">Español</option>
+      </select>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.28rem;">
+        <label for="gemini-model" style="margin-bottom:0;">Gemini 模型</label>
+        <button type="button" id="fetch-models-btn" onclick="fetchModels()"
+          style="background:none;border:none;color:#1814ff;font-size:0.7rem;cursor:pointer;padding:0;">
+           抓取可用模型
+        </button>
+      </div>
+      <select id="gemini-model" name="gemini_model" style="margin-bottom:0.15rem;">
+        <option value="gemini-2.5-flash" selected="">gemini-2.5-flash（推薦）</option>
+        <option value="gemini-2.5-pro">gemini-2.5-pro（最高品質）</option>
+        <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite（最快）</option>
+        <option value="gemini-2.0-flash">gemini-2.0-flash</option>
+      </select>
+      <p style="margin:0.05rem 0 0;font-size:0.68rem;color:#94a3b8;text-align:center;">模型清單來自 Google API，部分模型可能因帳號限制無法使用。</p>
+      <details>
+        <summary>進階設定（OCR 語言）</summary>
+        <label for="ocr-lang" style="margin-top:0.45rem;">Tesseract 語言代碼</label>
+        <input type="text" id="ocr-lang" name="ocr_lang" value="chi_tra+chi_sim+eng">
+      </details>
+      <hr class="div" style="margin:0.2rem 0;">
+      <div class="drop-zone" id="drop-zone">
+        <input type="file" id="file-input" name="file" accept=".pdf">
+        <div class="icon"><img src="/cover/raw toast.png" style="width:48px;height:48px;object-fit:contain;"></div>
+        <p>拖曳 PDF 到此處，或點擊選擇檔案</p>
+        <p class="filename" id="filename-display">尚未選擇檔案</p>
+      </div>
+      <button type="button" class="btn" id="submit-btn">開始翻譯</button>
+    </form>
+    <div class="error-box" id="error-box"></div>
+    <div class="progress-wrap" id="progress-wrap">
+      <div class="progress-bar-bg"><div class="progress-bar" id="progress-bar"></div></div>
+      <p id="status-msg">處理中…</p>
+    </div>
+  </div>
+  <div id="recent-jobs-panel" style="display:none; width:100%; max-width:520px;">
+    <div class="card" style="padding:1rem 1.2rem;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.6rem;">
+        <span style="font-weight:600;font-size:0.9rem;color: #1814ff;">最近翻譯記錄</span>
+        <button onclick="openHistoryModal()" style="background:none;border:none;color:#1814ff;font-size:0.78rem;cursor:pointer;text-decoration:underline;">查看全部歷史記錄</button>
+      </div>
+      <ul id="recent-jobs-list" style="list-style:none;margin:0;padding:0;"></ul>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const ACTIVE_KEY = 'butterlayer.activeJobId';
+  const ACTIVE_NAME_KEY = 'butterlayer.activeJobName';
+  const form = document.getElementById('upload-form');
+  const button = document.getElementById('submit-btn');
+  const fileInput = document.getElementById('file-input');
+  const filenameEl = document.getElementById('filename-display');
+  const apiInput = document.getElementById('api-key');
+  const progressWrap = document.getElementById('progress-wrap');
+  const progressBar = document.getElementById('progress-bar');
+  const statusMsg = document.getElementById('status-msg');
+  const errorBox = document.getElementById('error-box');
+  const recentPanel = document.getElementById('recent-jobs-panel');
+  const recentList = document.getElementById('recent-jobs-list');
+
+  if (!form || !button || !fileInput || !filenameEl || !apiInput || !progressWrap || !progressBar || !statusMsg) return;
+
+  const showError = message => {
+    if (!errorBox) return;
+    errorBox.textContent = message;
+    errorBox.style.display = 'block';
+  };
+  const hideError = () => { if (errorBox) errorBox.style.display = 'none'; };
+  const setProgress = (value, message) => {
+    progressWrap.style.display = 'block';
+    progressBar.style.width = Math.max(0, Math.min(100, Number(value) || 0)) + '%';
+    statusMsg.textContent = message || '處理中...';
+  };
+  const setActiveFilename = name => {
+    const clean = (name || '').replace(/\.pdf$/i, '');
+    if (clean) filenameEl.textContent = `正在處理：${clean}.pdf`;
+  };
+  const setSelectedFilename = () => {
+    filenameEl.textContent = fileInput.files[0]?.name || '尚未選擇檔案';
+  };
+  fileInput.addEventListener('change', setSelectedFilename, true);
+  document.getElementById('drop-zone')?.addEventListener('drop', () => {
+    setTimeout(setSelectedFilename, 0);
+  }, true);
+  const poll = jobId => {
+    fetch(`/status/${jobId}`, { cache: 'no-store' })
+      .then(r => r.json())
+      .then(data => {
+        if (data.error) {
+          localStorage.removeItem(ACTIVE_KEY);
+          button.disabled = false;
+          showError(data.error);
+          return;
+        }
+        if (data.source_name) {
+          localStorage.setItem(ACTIVE_NAME_KEY, data.source_name);
+          setActiveFilename(data.source_name);
+        }
+        setProgress(data.progress || 0, data.message || '處理中...');
+        if (data.status === 'done') {
+          localStorage.removeItem(ACTIVE_KEY);
+          localStorage.removeItem(ACTIVE_NAME_KEY);
+          location.href = `/?job=${encodeURIComponent(jobId)}`;
+          return;
+        }
+        if (data.status === 'error') {
+          localStorage.removeItem(ACTIVE_KEY);
+          localStorage.removeItem(ACTIVE_NAME_KEY);
+          button.disabled = false;
+          showError('處理失敗：' + (data.message || '未知錯誤'));
+          return;
+        }
+        setTimeout(() => poll(jobId), 1500);
+      })
+      .catch(() => setTimeout(() => poll(jobId), 2000));
+  };
+  const upload = event => {
+    event?.preventDefault();
+    event?.stopPropagation();
+    event?.stopImmediatePropagation?.();
+    hideError();
+    if (button.disabled) return false;
+    if (!fileInput.files.length) {
+      showError('請選擇 PDF 檔案。');
+      return false;
+    }
+    if (!apiInput.value.trim()) {
+      showError('請輸入 Gemini API Key。');
+      return false;
+    }
+
+    const filename = fileInput.files[0]?.name || 'PDF';
+    const data = new FormData(form);
+    button.disabled = true;
+    localStorage.setItem(ACTIVE_NAME_KEY, filename.replace(/\.pdf$/i, ''));
+    setActiveFilename(filename);
+    setProgress(3, `上傳中：${filename}`);
+
+    fetch('/upload', {
+      method: 'POST',
+      headers: { 'X-Requested-With': 'fetch' },
+      body: data,
+    })
+      .then(r => r.json().then(body => ({ ok: r.ok, body })))
+      .then(({ ok, body }) => {
+        if (!ok || body.error) {
+          button.disabled = false;
+          progressWrap.style.display = 'none';
+          showError(body.error || '上傳失敗');
+          return;
+        }
+        localStorage.setItem(ACTIVE_KEY, body.job_id);
+        if (body.source_name) {
+          localStorage.setItem(ACTIVE_NAME_KEY, body.source_name);
+          setActiveFilename(body.source_name);
+        }
+        setProgress(8, `已上傳：${filename}，正在建立翻譯流程...`);
+        poll(body.job_id);
+      })
+      .catch(error => {
+        button.disabled = false;
+        progressWrap.style.display = 'none';
+        showError('網路錯誤：' + error.message);
+      });
+    return false;
+  };
+
+  form.addEventListener('submit', upload, true);
+  button.addEventListener('click', upload, true);
+
+  const escapeHtml = value => String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+  const jobDate = mtime => {
+    const d = new Date(Number(mtime || 0) * 1000);
+    if (Number.isNaN(d.getTime())) return '';
+    return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  };
+  const renderEarlyRecentJobs = () => {
+    if (!recentPanel || !recentList) return;
+    fetch('/jobs', { cache: 'no-store' })
+      .then(r => r.json())
+      .then(jobs => {
+        if (!Array.isArray(jobs) || !jobs.length) {
+          recentPanel.style.display = 'none';
+          return;
+        }
+        recentPanel.style.display = 'block';
+        recentList.innerHTML = jobs.slice(0, 10).map(job => {
+          const id = escapeHtml(job.id);
+          const name = escapeHtml(job.name || job.id);
+          const partial = job.partial ? '<span style="color:#f59e0b;margin-right:0.2rem;">!</span>' : '';
+          const href = `/?job=${encodeURIComponent(job.id)}`;
+          return `<li class="recent-job-item">
+            <a class="recent-job-name" href="${href}" data-open-job-id="${id}" title="${name}">${partial}${name}</a>
+            <span class="recent-job-date">${jobDate(job.date)}</span>
+            <button class="recent-job-del" data-delete-job-id="${id}" title="刪除">x</button>
+          </li>`;
+        }).join('');
+      })
+      .catch(() => { recentPanel.style.display = 'none'; });
+  };
+  recentList?.addEventListener('click', event => {
+    const deleteButton = event.target.closest('[data-delete-job-id]');
+    if (deleteButton) {
+      event.preventDefault();
+      event.stopPropagation();
+      fetch(`/jobs/${encodeURIComponent(deleteButton.dataset.deleteJobId)}`, { method: 'DELETE' })
+        .finally(renderEarlyRecentJobs);
+      return;
+    }
+    const openLink = event.target.closest('[data-open-job-id]');
+    if (openLink) {
+      event.preventDefault();
+      event.stopPropagation();
+      const jobId = openLink.getAttribute('data-open-job-id');
+      window.open('/?job=' + encodeURIComponent(jobId), '_blank', 'noopener');
+    }
+  });
+  renderEarlyRecentJobs();
+
+  const activeJob = localStorage.getItem(ACTIVE_KEY);
+  if (activeJob && !new URLSearchParams(location.search).get('job')) {
+    setActiveFilename(localStorage.getItem(ACTIVE_NAME_KEY));
+    button.disabled = true;
+    setProgress(5, '正在恢復上一個翻譯流程...');
+    poll(activeJob);
+  }
+})();
+</script>
+
+<!-- History modal -->
+<div id="history-modal">
+  <div class="history-box">
+    <div class="history-header">
+      <span>歷史翻譯記錄</span>
+      <button class="history-close" onclick="closeHistoryModal()">✕</button>
+    </div>
+    <div class="history-body">
+      <ul id="history-list" style="list-style:none;margin:0;padding:0;"></ul>
+    </div>
+  </div>
+</div>
+
+<!-- Split view -->
+<div id="split-panel">
+  <div class="split-container">
+
+    <!-- Left: PDF -->
+    <div class="split-pane">
+      <div class="pane-header">
+        <h3>原始 PDF</h3>
+        <span class="pane-badge badge-original">Original</span>
+        <button type="button" class="pane-action" id="overlay-btn">翻譯覆蓋</button>
+        <span id="overlay-tools" style="display:none;align-items:center;gap:0.2rem;">
+          <button type="button" class="pane-action" id="overlay-diag-btn" title="匯出覆蓋診斷資料（整份文件）" style="padding:0.18rem 0.5rem;color:#6b7280;">問題回報</button>
+        </span>
+        <div class="scale-ctrl">
+          <button id="zoom-out">－</button>
+          <span id="zoom-label">150%</span>
+          <button id="zoom-in">＋</button>
+        </div>
+        <div class="page-nav">
+          <button id="pdf-prev" disabled="">←</button>
+          <input id="pdf-page-input" type="text" inputmode="numeric" value="1"
+            style="width:2.6rem;text-align:center;border:1px solid #d1d5db;border-radius:4px;
+                   font-size:0.76rem;color:#111827;font-weight:500;
+                   padding:0;margin:0;height:1.72rem;box-sizing:border-box;
+                   background:#fff;-webkit-appearance:none;appearance:none;
+                   align-self:center;display:block;">
+          <span id="pdf-page-total" style="font-size:0.76rem;color:#6b7a8d;white-space:nowrap;">/ 1</span>
+          <button id="pdf-next">→</button>
+        </div>
+      </div>
+      <div class="hint-bar" id="pdf-hint-bar">點擊任意字詞可查看意義；「翻譯覆蓋」可將譯文疊加在 PDF 上</div>
+      <div class="pdf-pane-body" id="pdf-pane-body">
+        <div class="pdf-page-wrap" id="pdf-page-wrap">
+          <canvas id="pdf-canvas"></canvas>
+          <canvas id="hl-canvas"></canvas>
+          <div id="text-overlay-layer"></div>
+          <div id="click-overlay"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="split-resizer" id="split-resizer" role="separator" aria-orientation="vertical" title="拖曳調整左右欄比例"></div>
+
+    <!-- Right: Editable translation -->
+    <div class="split-pane">
+      <div class="pane-header">
+        <h3>翻譯結果</h3>
+        <span class="pane-badge badge-translated">Translated</span>
+        <button type="button" class="pane-action" id="insert-image-btn">插入圖片</button>
+        <div class="scale-ctrl">
+          <button id="trans-zoom-out">－</button>
+          <span id="trans-zoom-label">100%</span>
+          <button id="trans-zoom-in">＋</button>
+        </div>
+        <div class="format-ctrl">
+          <button type="button" class="pane-action" id="font-decrease-btn" title="縮小字體">A－</button>
+          <span id="block-font-size-display" class="font-size-display"></span>
+          <button type="button" class="pane-action" id="font-increase-btn" title="放大字體">A＋</button>
+          <button type="button" class="pane-action" id="bold-btn" title="加粗" style="font-weight:700;letter-spacing:-0.5px;">B</button>
+        </div>
+      </div>
+      <input type="file" id="insert-image-input" accept="image/*" style="display:none">
+      <div class="trans-pane-outer" id="trans-pane-outer">
+        <div class="word-paper">
+          <div class="trans-pane-body" id="trans-body" contenteditable="true" spellcheck="false"></div>
+        </div>
+      </div>
+      <div class="trans-hint">
+        <span>可直接點擊編輯翻譯內容</span>
+        <span style="display:flex;align-items:center;gap:0.5rem;flex-shrink:0;">
+          <span id="word-page-est" style="color:#64748b;"></span>
+          <span class="save-state idle" id="save-state">尚未修改</span>
+        </span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Floating word-meaning popup -->
+<div id="sent-popup">
+  <span class="sp-label">字詞意義</span>
+  <div class="sp-word" id="sent-popup-word"></div>
+  <div class="sp-text" id="sent-popup-text"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+if (window.pdfjsLib) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+} else {
+  console.warn('pdf.js did not load; upload controls will still work, but PDF preview is unavailable.');
+}
+
+// ── State ────────────────────────────────────────────────────────────────────
+let apiKey = '', targetLang = 'Traditional Chinese (繁體中文)', geminiModel = 'gemini-2.5-flash';
+let originalPages = [], translatedPages = [];
+let translatedPageBlocks = [], pageBlockBlueprints = [];
+let currentPage = 1, totalPages = 0;
+let pdfDoc = null, pdfScale = 1.5;
+let renderTask = null, pollTimer = null;
+let overlayMode = false;
+let pageLines = [];          // [{top, bot, minX, maxX}]  in canvas pixels (line-level, for highlight)
+let pageWords = null;        // { items: [{text,minX,maxX,top,bot,charOffset}], totalChars }
+let pageLineMaps = [];
+let pageWordMaps = [];       // word boxes from backend [{left,right,top,bottom,text}] per page
+let pageSourceBlocks = [];   // [{left,right,top,bottom,chars}] per page from native PDF blocks
+let pageOcrParas = [];       // [{idx,left,right,top,bottom}] per page, from scanned PDF markup translation
+let pageWordsFromBackend = false; // true when pageWords came from OCR backend (no native text layer)
+let currentHighPara = null;
+let activeEditorBlock = null;
+let currentJobId = null;
+let currentSourceName = 'translated_output';
+let currentResultUpdatedAt = null;
+let savedPages = [], savedPageBlocks = [];
+let saveTimer = null, overlayTimer = null;
+const SAVE_DELAY_MS = 700;
+const OVERLAY_DELAY_MS = 300;
+const TRANSLATION_BLOCK_STEP = 1000;
+const ACTIVE_JOB_STORAGE_KEY = 'butterlayer.activeJobId';
+
+// Never keep credentials in the browser address bar if an older GET submit did it.
+if (window.location.search && new URLSearchParams(window.location.search).has('api_key')) {
+  window.history.replaceState({}, document.title, window.location.pathname);
+}
+
+// ── Split pane resizing ──────────────────────────────────────────────────────
+const splitContainer = document.querySelector('.split-container');
+const splitResizer = document.getElementById('split-resizer');
+const SPLIT_STORAGE_KEY = 'butterlayer.split.leftPercent';
+
+function applySplitRatio(leftPercent) {
+  if (!splitContainer) return;
+  const clamped = Math.max(25, Math.min(75, Number(leftPercent) || 50));
+  splitContainer.style.setProperty('--left-pane-width', `${clamped}fr`);
+  splitContainer.style.setProperty('--right-pane-width', `${100 - clamped}fr`);
+}
+
+applySplitRatio(localStorage.getItem(SPLIT_STORAGE_KEY) || 50);
+
+splitResizer?.addEventListener('pointerdown', e => {
+  if (!splitContainer) return;
+  e.preventDefault();
+  splitResizer.setPointerCapture(e.pointerId);
+  splitContainer.classList.add('resizing');
+
+  const onMove = moveEvent => {
+    const rect = splitContainer.getBoundingClientRect();
+    const leftPercent = ((moveEvent.clientX - rect.left) / rect.width) * 100;
+    applySplitRatio(leftPercent);
+  };
+  const onUp = upEvent => {
+    splitContainer.classList.remove('resizing');
+    splitResizer.releasePointerCapture(upEvent.pointerId);
+    const rect = splitContainer.getBoundingClientRect();
+    const leftPercent = Math.max(25, Math.min(75, ((upEvent.clientX - rect.left) / rect.width) * 100));
+    localStorage.setItem(SPLIT_STORAGE_KEY, String(leftPercent));
+    splitResizer.removeEventListener('pointermove', onMove);
+    splitResizer.removeEventListener('pointerup', onUp);
+    splitResizer.removeEventListener('pointercancel', onUp);
+  };
+
+  splitResizer.addEventListener('pointermove', onMove);
+  splitResizer.addEventListener('pointerup', onUp);
+  splitResizer.addEventListener('pointercancel', onUp);
+});
+
+// ── API Key save ─────────────────────────────────────────────────────────────
+const apiKeyInput = document.getElementById('api-key');
+const _s = localStorage.getItem('gemini_api_key');
+if (_s) apiKeyInput.value = _s;
+apiKeyInput.addEventListener('input', () => {
+  const v = apiKeyInput.value.trim();
+  v ? localStorage.setItem('gemini_api_key', v) : localStorage.removeItem('gemini_api_key');
+});
+
+// ── Upload form ───────────────────────────────────────────────────────────────
+const dropZone   = document.getElementById('drop-zone');
+const fileInput  = document.getElementById('file-input');
+const filenameEl = document.getElementById('filename-display');
+const form       = document.getElementById('upload-form');
+const submitBtn  = document.getElementById('submit-btn');
+const progressWrap = document.getElementById('progress-wrap');
+const progressBar  = document.getElementById('progress-bar');
+const statusMsg    = document.getElementById('status-msg');
+const errorBox     = document.getElementById('error-box');
+const saveStateEl  = document.getElementById('save-state');
+const insertImageBtn = document.getElementById('insert-image-btn');
+const insertImageInput = document.getElementById('insert-image-input');
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('drag-over');
+  if (e.dataTransfer.files.length) { fileInput.files = e.dataTransfer.files; updateFn(); }
+});
+fileInput.addEventListener('change', updateFn);
+function updateFn() { filenameEl.textContent = fileInput.files[0]?.name || '尚未選擇檔案'; }
+function showErr(m) { errorBox.textContent = m; errorBox.style.display = 'block'; }
+function hideErr() { errorBox.style.display = 'none'; }
+function setProg(p, m) {
+  progressWrap.style.display = 'block';
+  progressBar.style.width = Math.max(0, Math.min(100, Number(p) || 0)) + '%';
+  statusMsg.textContent = m;
+}
+
+async function fetchModels() {
+  const key = apiKeyInput.value.trim();
+  if (!key) { showErr('請先輸入 Gemini API Key 再抓取模型清單。'); return; }
+  const btn = document.getElementById('fetch-models-btn');
+  btn.textContent = '載入中…'; btn.disabled = true;
+  try {
+    const r = await fetch('/fetch-models', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ api_key: key }),
+    });
+    const d = await r.json();
+    if (!r.ok || d.error) { showErr('抓取失敗：' + (d.error || '未知錯誤')); return; }
+    const sel = document.getElementById('gemini-model');
+    const cur = sel.value;
+    sel.innerHTML = d.models.map(m =>
+      `<option value="${m.id}"${m.id === cur ? ' selected' : ''}>${m.id}</option>`
+    ).join('');
+    btn.textContent = `✓ 已更新（${d.models.length} 個模型）`;
+  } catch(e) { showErr('網路錯誤：' + e.message); btn.textContent = ' 抓取可用模型'; }
+  finally { btn.disabled = false; }
+}
+
+async function handleUploadSubmit(e) {
+  e?.preventDefault();
+  e?.stopPropagation?.();
+  e?.stopImmediatePropagation?.();
+  hideErr();
+  if (submitBtn.disabled) return;
+  if (!fileInput.files.length) { showErr('請選擇 PDF 檔案。'); return; }
+  apiKey = apiKeyInput.value.trim();
+  if (!apiKey) { showErr('請輸入 Gemini API Key。'); return; }
+  targetLang = document.getElementById('target-lang').value;
+  geminiModel = document.getElementById('gemini-model').value;
+  const fd = new FormData(form);
+  const selectedName = fileInput.files[0]?.name || 'PDF';
+  submitBtn.disabled = true;
+  setProg(3, `上傳中：${selectedName}`);
+  try {
+    const r = await fetch('/upload', {
+      method:'POST',
+      headers: { 'X-Requested-With': 'fetch' },
+      body:fd,
+    });
+    const d = await r.json();
+    if (!r.ok || d.error) { showErr(d.error||'上傳失敗'); submitBtn.disabled=false; progressWrap.style.display='none'; return; }
+    currentJobId = d.job_id;
+    localStorage.setItem(ACTIVE_JOB_STORAGE_KEY, d.job_id);
+    setProg(8, `已上傳：${selectedName}，正在建立翻譯流程…`);
+    pollStatus(d.job_id);
+    pollTimer = setInterval(() => pollStatus(d.job_id), 1500);
+  } catch(e) { showErr('網路錯誤：'+e.message); submitBtn.disabled=false; progressWrap.style.display='none'; }
+}
+
+function pollStatus(id) {
+  fetch(`/status/${id}`, { cache: 'no-store' }).then(r=>r.json()).then(d => {
+    setProg(d.progress||0, d.message||'處理中…');
+    if (d.status==='done') {
+      clearInterval(pollTimer);
+      localStorage.removeItem(ACTIVE_JOB_STORAGE_KEY);
+      loadResult(id).catch(err => showErr('載入結果失敗：' + (err?.message || err)));
+    }
+    else if (d.status==='error') {
+      clearInterval(pollTimer); progressWrap.style.display='none';
+      localStorage.removeItem(ACTIVE_JOB_STORAGE_KEY);
+      showErr('處理失敗：'+d.message); submitBtn.disabled=false;
+      if (d.dead_model) {
+        const sel = document.getElementById('gemini-model');
+        const opt = sel.querySelector(`option[value="${d.dead_model}"]`);
+        if (opt) opt.remove();
+      }
+    }
+  }).catch(()=>{});
+}
+
+async function resumeActiveJobIfAny() {
+  const jobId = localStorage.getItem(ACTIVE_JOB_STORAGE_KEY);
+  if (!jobId || new URLSearchParams(location.search).get('job')) return;
+
+  try {
+    const r = await fetch(`/status/${jobId}`, { cache: 'no-store' });
+    const d = await r.json();
+    if (!r.ok || d.error) {
+      localStorage.removeItem(ACTIVE_JOB_STORAGE_KEY);
+      return;
+    }
+
+    if (d.status === 'done') {
+      localStorage.removeItem(ACTIVE_JOB_STORAGE_KEY);
+      await loadResult(jobId);
+      return;
+    }
+
+    if (d.status === 'error') {
+      localStorage.removeItem(ACTIVE_JOB_STORAGE_KEY);
+      showErr('上一個翻譯工作失敗：' + (d.message || '未知錯誤'));
+      return;
+    }
+
+    currentJobId = jobId;
+    submitBtn.disabled = true;
+    progressWrap.style.display = 'block';
+    setProg(d.progress || 0, d.message || '處理中…');
+    pollTimer = setInterval(() => pollStatus(jobId), 1500);
+  } catch(e) {
+    localStorage.removeItem(ACTIVE_JOB_STORAGE_KEY);
+  }
+}
+
+// ── Recent jobs (server-side) ─────────────────────────────────────────────────
+function saveRecentJob(jobId, name) {
+  renderRecentJobs();
+}
+
+function jobDateStr(mtime) {
+  const d = new Date(mtime * 1000);
+  return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+function jobItemHtml(j, delCallback) {
+  const partial = j.partial ? '<span style="color:#f59e0b;margin-right:0.2rem;">⚠</span>' : '';
+  const id = escAttr(j.id);
+  const name = escHtml(j.name || j.id);
+  const href = `/?job=${encodeURIComponent(j.id)}`;
+  return `<li class="recent-job-item">
+    <a class="recent-job-name" href="${href}" target="_blank" rel="noopener" data-open-job-id="${id}" title="${name}">${partial}${name}</a>
+    <span class="recent-job-date">${jobDateStr(j.date)}</span>
+    <button class="recent-job-del" onclick="${delCallback}('${id}')" title="刪除">✕</button>
+  </li>`;
+}
+
+async function renderRecentJobs() {
+  const panel = document.getElementById('recent-jobs-panel');
+  const list  = document.getElementById('recent-jobs-list');
+  try {
+    const r = await fetch('/jobs', { cache: 'no-store' });
+    const jobs = await r.json();
+    if (!jobs.length) { panel.style.display = 'none'; return; }
+    panel.style.display = 'block';
+    list.innerHTML = jobs.slice(0, 10).map(j => jobItemHtml(j, 'deleteJob')).join('');
+  } catch(e) { panel.style.display = 'none'; }
+}
+
+async function deleteJob(jobId) {
+  try { await fetch(`/jobs/${jobId}`, { method: 'DELETE' }); } catch(e) {}
+  renderRecentJobs();
+  if (document.getElementById('history-modal').classList.contains('open')) renderHistoryModal();
+}
+
+async function openHistoryModal() {
+  document.getElementById('history-modal').classList.add('open');
+  await renderHistoryModal();
+}
+
+function closeHistoryModal() {
+  document.getElementById('history-modal').classList.remove('open');
+}
+
+async function renderHistoryModal() {
+  const list = document.getElementById('history-list');
+  if (!list) return;
+  list.innerHTML = '<li class="history-empty">載入中…</li>';
+  try {
+    const r = await fetch('/jobs', { cache: 'no-store' });
+    const jobs = await r.json();
+    if (!jobs.length) { list.innerHTML = '<li class="history-empty">尚無翻譯記錄</li>'; return; }
+    list.innerHTML = jobs.map(j => jobItemHtml(j, 'deleteJob')).join('');
+  } catch(e) { list.innerHTML = '<li class="history-empty">載入失敗</li>'; }
+}
+
+document.getElementById('history-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('history-modal')) closeHistoryModal();
+});
+
+async function resumeTranslation(jobId) {
+  const key = (document.getElementById('api-key')?.value || apiKey || '').trim();
+  if (!key) { alert('請先在上傳頁面輸入 Gemini API Key，再點繼續翻譯。'); return; }
+  try {
+    const r = await fetch(`/resume/${jobId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ api_key: key }),
+    });
+    const d = await r.json();
+    if (!r.ok || d.error) { alert('繼續翻譯失敗：' + (d.error || '未知錯誤')); return; }
+    document.getElementById('upload-panel').style.display = 'none';
+    progressWrap.style.display = 'block';
+    setProg(50, '繼續翻譯中…');
+    pollTimer = setInterval(() => pollStatus(jobId), 1500);
+  } catch(e) { alert('網路錯誤：' + e.message); }
+}
+
+function reopenJob(jobId) {
+  window.open(`/?job=${encodeURIComponent(jobId)}`, '_blank', 'noopener');
+}
+
+renderRecentJobs();
+resumeActiveJobIfAny();
+
+// Auto-load job from URL ?job=<id>
+(async () => {
+  const jobId = new URLSearchParams(location.search).get('job');
+  if (!jobId) return;
+  localStorage.removeItem(ACTIVE_JOB_STORAGE_KEY);
+  localStorage.removeItem('butterlayer.activeJobName');
+  try {
+    await loadResult(jobId);
+  } catch(err) {
+    showErr('載入失敗：' + (err?.message || String(err)));
+  }
+})();
+
+async function loadResult(id) {
+  const resp = await fetch(`/result/${id}?_=${Date.now()}`, { cache: 'no-store' });
+  if (!resp.ok) {
+    const errText = await resp.text().catch(() => resp.status);
+    throw new Error(`伺服器回傳 ${resp.status}：${errText}`);
+  }
+  const d = await resp.json();
+  currentJobId = d.job_id || id;
+  currentResultUpdatedAt = d.updated_at || null;
+  currentSourceName = (d.source_name || 'translated_output').replace(/\.[^.]+$/, '') || 'translated_output';
+  const urlJob = new URLSearchParams(location.search).get('job');
+  if (urlJob !== currentJobId) {
+    window.history.replaceState({}, document.title, `/?job=${encodeURIComponent(currentJobId)}`);
+  }
+  saveRecentJob(id, currentSourceName);
+  originalPages   = d.original   || [];
+  translatedPages = d.translated || [];
+  pageLineMaps       = d.page_lines || [];
+  pageWordMaps       = d.page_words || [];
+  pageSourceBlocks   = d.page_source_blocks || [];
+  pageOcrParas       = d.page_ocr_paras     || [];
+  translatedPageBlocks = normalizeBlockMatrix(d.translated_blocks || [], translatedPages);
+  pageBlockBlueprints = normalizeBlockMatrix(
+    d.translated_blueprints || [],
+    translatedPages
+  );
+  translatedPages = translatedPageBlocks.map(page => blocksToText(page));
+  savedPageBlocks = translatedPageBlocks.map(page => cloneBlocks(page));
+  savedPages = [...translatedPages];
+  targetLang = d.target_lang || targetLang;
+  setSaveState('已自動儲存', 'saved');
+
+  // Backfill source blocks for old jobs that don't have them yet
+  if (!pageSourceBlocks.length && id) {
+    fetch(`/result/${id}/source_blocks?_=${Date.now()}`, { cache: 'no-store' })
+      .then(r => r.ok ? r.json() : null)
+      .then(sb => {
+        if (sb && sb.page_source_blocks && sb.page_source_blocks.length) {
+          pageSourceBlocks = sb.page_source_blocks;
+          if (overlayMode) renderOverlay(currentPage);
+        }
+      })
+      .catch(() => {});
+  }
+
+  const readingUrl = `/download/${id}?mode=reading`;
+  const originalLayoutUrl = `/download/${id}?mode=original_layout`;
+  const readingCompareUrl = `/download/${id}?mode=reading_compare`;
+  const isPartial = !!d.partial;
+  const donePages = (d.translated || []).length;
+  const totalOriginalPages = (d.original || []).length;
+  const partialBadge = isPartial ? `<span style="color:#f59e0b;font-size:0.78rem;margin-right:0.5rem;">⚠ 未完成（${donePages}/${totalOriginalPages} 頁）</span>` : '';
+  const resumeBtn = isPartial ? `<button class="topbar-btn" style="background:#f59e0b;border-color:#f59e0b;" onclick="resumeTranslation('${id}')">▶ 繼續翻譯</button>` : '';
+  document.getElementById('topbar-actions').innerHTML = `
+    ${partialBadge}
+    ${resumeBtn}
+    <a class="topbar-btn green download-word-btn" href="${readingUrl}" download="${currentSourceName}_reading.docx">⬇ 下載閱讀版 Word</a>
+    <a class="topbar-btn download-word-btn" href="${readingCompareUrl}" download="${currentSourceName}_閱讀對照版.docx">⬇ 下載閱讀對照版 Word</a>
+    <a class="topbar-btn download-word-btn" href="${originalLayoutUrl}" download="${currentSourceName}_original_layout.docx">⬇ 下載 OCR 版 Word</a>
+    <button class="topbar-btn" onclick="resetToUpload()">＋ 新文件</button>
+  `;
+  document.querySelectorAll('.download-word-btn').forEach(button => button.addEventListener('click', async e => {
+    e.preventDefault();
+    const ok = await persistRenderedPageNow();
+    if (!ok) {
+      showErr('目前編輯內容尚未成功儲存，請稍後再試。');
+      return;
+    }
+    window.location.href = e.currentTarget.href;
+  }));
+
+  document.getElementById('upload-panel').style.display = 'none';
+  document.getElementById('split-panel').style.display = 'block';
+  if (window.pdfjsLib) {
+    pdfDoc = await pdfjsLib.getDocument(`/pdf/${id}`).promise;
+    totalPages = pdfDoc.numPages;
+    renderPage(1);
+  } else {
+    pdfDoc = null;
+    totalPages = Math.max(originalPages.length, translatedPages.length, 1);
+    document.getElementById('pdf-page-total').textContent = `/ ${totalPages}`;
+    renderTranslation(translatedPageBlocks[0] || createBlocksFromText(translatedPages[0] || ''), 1);
+    showErr('PDF 預覽元件載入失敗，但翻譯結果仍可編輯與下載。請重新整理頁面再試。');
+  }
+}
+window.loadResult = loadResult;
+
+document.addEventListener('click', event => {
+  const openLink = event.target.closest('[data-open-job-id]');
+  if (!openLink) return;
+
+  event.preventDefault();
+  event.stopImmediatePropagation();
+
+  const jobId = openLink.getAttribute('data-open-job-id');
+  closeHistoryModal();
+  window.open('/?job=' + encodeURIComponent(jobId || ''), '_blank', 'noopener');
+}, true);
+
+function resetToUpload() {
+  clearTimeout(saveTimer);
+  document.getElementById('upload-panel').style.display = 'flex';
+  document.getElementById('split-panel').style.display = 'none';
+  document.getElementById('topbar-actions').innerHTML = '';
+  form.reset(); filenameEl.textContent = '尚未選擇檔案';
+  submitBtn.disabled=false; progressWrap.style.display='none'; hideErr();
+  pdfDoc=null; pageLines=[]; pageWords=null; pageWordMaps=[]; pageSourceBlocks=[]; pageOcrParas=[]; pageWordsFromBackend=false; currentHighPara = null;
+  overlayMode = false;
+  document.getElementById('overlay-btn').classList.remove('active');
+  activeEditorBlock = null;
+  currentJobId = null;
+  currentResultUpdatedAt = null;
+  localStorage.removeItem(ACTIVE_JOB_STORAGE_KEY);
+  localStorage.removeItem('butterlayer.activeJobName');
+  window.history.replaceState({}, document.title, window.location.pathname);
+  originalPages = [];
+  translatedPages = [];
+  translatedPageBlocks = [];
+  pageBlockBlueprints = [];
+  pageLineMaps = [];
+  savedPages = [];
+  savedPageBlocks = [];
+  transBody.innerHTML = ''; transBody.dataset.pageNum = '';
+  setSaveState('尚未修改', 'idle');
+}
+
+// ── PDF render ────────────────────────────────────────────────────────────────
+const pdfCanvas = document.getElementById('pdf-canvas');
+const hlCanvas  = document.getElementById('hl-canvas');
+const pdfCtx    = pdfCanvas.getContext('2d');
+const hlCtx     = hlCanvas.getContext('2d');
+const textOverlayLayer = document.getElementById('text-overlay-layer');
+const pageWrap  = document.getElementById('pdf-page-wrap');
+const overlay   = document.getElementById('click-overlay');
+const transBody = document.getElementById('trans-body');
+
+async function renderPage(pageNum) {
+  if (!pdfDoc) return;
+  const saved = await persistRenderedPageNow();
+  if (!saved) return;
+  currentPage = pageNum;
+  hideSentPopup();
+  hlCtx.clearRect(0, 0, hlCanvas.width, hlCanvas.height);
+  if (currentHighPara) currentHighPara.classList.remove('highlighted');
+  currentHighPara = null;
+
+  // Nav
+  const _inp = document.getElementById('pdf-page-input');
+  if (document.activeElement !== _inp) _inp.value = pageNum;
+  document.getElementById('pdf-page-total').textContent = `/ ${totalPages}`;
+  document.getElementById('pdf-prev').disabled = pageNum <= 1;
+  document.getElementById('pdf-next').disabled = pageNum >= totalPages;
+
+  if (renderTask) { try { renderTask.cancel(); } catch(e){} renderTask = null; }
+
+  const page     = await pdfDoc.getPage(pageNum);
+  const viewport = page.getViewport({ scale: pdfScale });
+  const W = viewport.width, H = viewport.height;
+
+  // Resize canvases
+  pdfCanvas.width  = hlCanvas.width  = W;
+  pdfCanvas.height = hlCanvas.height = H;
+  pdfCanvas.style.width  = hlCanvas.style.width  = W + 'px';
+  pdfCanvas.style.height = hlCanvas.style.height = H + 'px';
+  pageWrap.style.width  = W + 'px';
+  pageWrap.style.height = H + 'px';
+
+  // Render PDF
+  renderTask = page.render({ canvasContext: pdfCtx, viewport });
+  try { await renderTask.promise; } catch(e) { return; }
+
+  const mappedLines = pageLineMaps[pageNum - 1] || [];
+  const textContent = await page.getTextContent();
+  pageWords = buildWordItems(textContent, viewport);
+  pageWordsFromBackend = false;
+
+  // For scanned PDFs, pdf.js returns no text; use backend OCR word boxes instead
+  if (pageWords.items.length === 0) {
+    const backendWords = pageWordMaps[pageNum - 1] || [];
+    if (backendWords.length > 0) {
+      pageWords = denormalizePageWords(backendWords, W, H);
+      pageWordsFromBackend = true;
+    }
+  }
+
+  if (mappedLines.length) {
+    pageLines = denormalizePageLines(mappedLines, W, H);
+  } else {
+    pageLines = buildLines(textContent, viewport);
+  }
+
+  // Render editable translation
+  renderTranslation(translatedPageBlocks[pageNum - 1] || createBlocksFromText(''), pageNum);
+
+  // Redraw overlay if active
+  renderOverlay(pageNum);
+
+  document.getElementById('pdf-pane-body').scrollTop = 0;
+  const _outer = document.getElementById('trans-pane-outer');
+  _outer.scrollTop = 0;
+  _outer.scrollLeft = 0;
+}
+
+// Navigation
+document.getElementById('pdf-prev').addEventListener('click',   () => { if (currentPage > 1) renderPage(currentPage - 1); });
+document.getElementById('pdf-next').addEventListener('click',   () => { if (currentPage < totalPages) renderPage(currentPage + 1); });
+
+// Zoom
+document.getElementById('zoom-in').addEventListener('click', () => {
+  pdfScale = Math.min(pdfScale + 0.25, 4);
+  document.getElementById('zoom-label').textContent = Math.round(pdfScale * 100) + '%';
+  renderPage(currentPage);
+});
+document.getElementById('zoom-out').addEventListener('click', () => {
+  pdfScale = Math.max(pdfScale - 0.25, 0.5);
+  document.getElementById('zoom-label').textContent = Math.round(pdfScale * 100) + '%';
+  renderPage(currentPage);
+});
+
+// ── Jump-to-page input ────────────────────────────────────────────────────────
+(function() {
+  const inp = document.getElementById('pdf-page-input');
+
+  function jumpToPage() {
+    if (!pdfDoc) { inp.value = currentPage || 1; return; }
+    const n = parseInt(inp.value, 10);
+    if (!Number.isFinite(n) || n < 1 || n > totalPages) {
+      inp.value = currentPage;
+      return;
+    }
+    if (n !== currentPage) renderPage(n);
+  }
+
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); inp.blur(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); inp.value = Math.min((parseInt(inp.value,10)||currentPage)+1, totalPages||1); }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); inp.value = Math.max((parseInt(inp.value,10)||currentPage)-1, 1); }
+  });
+  inp.addEventListener('blur', jumpToPage);
+  inp.addEventListener('focus', () => inp.select());
+})();
+
+// ── Build line data from text content ─────────────────────────────────────────
+function buildLines(textContent, viewport) {
+  const lines = [];
+  const vt = viewport.transform;
+
+  textContent.items.forEach(item => {
+    if (!item.str || !item.str.trim()) return;
+
+    // Transform item to viewport (canvas) coordinates
+    const [a, b, c, d, x, y] = pdfjsLib.Util.transform(vt, item.transform);
+
+    // Font height in canvas pixels
+    const h = Math.abs(d) || Math.abs(a) || 12;
+    const w = item.width * Math.abs(a) || h * item.str.length * 0.6;
+
+    const top = y - h;
+    const bot = y;
+    const midY = (top + bot) / 2;
+
+    // Merge into existing line with close midY
+    let found = null;
+    for (const ln of lines) {
+      const horizontalGap = Math.min(
+        Math.abs(x - ln.maxX),
+        Math.abs((x + w) - ln.minX)
+      );
+      const overlapsHorizontally = (x <= ln.maxX + h * 1.2) && ((x + w) >= ln.minX - h * 1.2);
+      if (Math.abs(ln.midY - midY) < h * 0.6 && (overlapsHorizontally || horizontalGap < h * 1.8)) {
+        found = ln;
+        break;
+      }
+    }
+    if (found) {
+      found.minX = Math.min(found.minX, x);
+      found.maxX = Math.max(found.maxX, x + w);
+      found.top  = Math.min(found.top, top);
+      found.bot  = Math.max(found.bot, bot);
+      found.text += ' ' + item.str;
+    } else {
+      lines.push({ midY, minX: x, maxX: x + w, top, bot, text: item.str });
+    }
+  });
+
+  return lines.sort((a, b) => a.top - b.top);
+}
+
+function denormalizePageLines(lines, width, height) {
+  return lines
+    .map(line => ({
+      minX: Math.max(0, line.left * width),
+      maxX: Math.min(width, line.right * width),
+      top: Math.max(0, line.top * height),
+      bot: Math.min(height, line.bottom * height),
+    }))
+    .filter(line => line.maxX > line.minX && line.bot > line.top)
+    .sort((a, b) => a.top - b.top);
+}
+
+function denormalizePageWords(words, width, height) {
+  let charOffset = 0;
+  const items = [];
+  for (const w of words) {
+    const minX = Math.max(0, w.left * width);
+    const maxX = Math.min(width, w.right * width);
+    const top  = Math.max(0, w.top * height);
+    const bot  = Math.min(height, w.bottom * height);
+    if (maxX <= minX || bot <= top || !w.text) continue;
+    items.push({ text: w.text, minX, maxX, top, bot, charOffset });
+    charOffset += w.text.length + 1;
+  }
+  return { items, totalChars: charOffset };
+}
+
+// Build flat word-item list from pdf.js textContent.
+// Each item carries charOffset = its byte position in the concatenated page text stream,
+// which lets us map "clicked word position in original text" → "position in translation".
+function buildWordItems(textContent, viewport) {
+  const vt = viewport.transform;
+  const W = viewport.width;
+  const vpScale = viewport.scale; // item.width is in user-space pts; only multiply by viewport scale
+  const items = [];
+
+  (textContent.items || []).forEach(item => {
+    const str = item.str || '';
+    const trimmed = str.trim();
+    if (trimmed) {
+      const [a, , , d, x, y] = pdfjsLib.Util.transform(vt, item.transform);
+      const h = Math.abs(d) || Math.abs(a) || 12;
+      const w = (item.width || 0) * vpScale || h * trimmed.length * 0.6;
+      items.push({ text: trimmed, minX: x, maxX: x + w, top: y - h, bot: y });
+    }
+  });
+
+  // Detect two-column layout: if enough items sit clearly left or right of centre,
+  // re-sort into column-major order (left col top→bottom, then right col top→bottom)
+  // so charOffset reflects the correct reading sequence.
+  if (items.length > 10) {
+    const midX = W / 2;
+    const leftCount  = items.filter(it => it.maxX  < midX * 0.9).length;
+    const rightCount = items.filter(it => it.minX  > midX * 1.1).length;
+    const twoCol = leftCount > 5 && rightCount > 5
+      && Math.min(leftCount, rightCount) / items.length > 0.15;
+
+    if (twoCol) {
+      items.sort((a, b) => {
+        const aMid = (a.minX + a.maxX) / 2;
+        const bMid = (b.minX + b.maxX) / 2;
+        const aLeft = aMid < midX;
+        const bLeft = bMid < midX;
+        if (aLeft !== bLeft) return aLeft ? -1 : 1;   // left column first
+        return a.top !== b.top ? a.top - b.top : a.minX - b.minX;
+      });
+    }
+  }
+
+  // Assign charOffset based on final reading order
+  let charOffset = 0;
+  items.forEach(item => {
+    item.charOffset = charOffset;
+    charOffset += item.text.length + 1;
+  });
+
+  return { items, totalChars: charOffset };
+}
+
+function getLineMetrics(line) {
+  const width = Math.max(line.maxX - line.minX, 1);
+  const height = Math.max(line.bot - line.top, 1);
+  return {
+    width,
+    height,
+    midX: (line.minX + line.maxX) / 2,
+    midY: (line.top + line.bot) / 2,
+  };
+}
+
+function getPointToRectDistance(x, y, line, padX = 0, padY = 0) {
+  const left = line.minX - padX;
+  const right = line.maxX + padX;
+  const top = line.top - padY;
+  const bottom = line.bot + padY;
+
+  const dx = x < left ? left - x : x > right ? x - right : 0;
+  const dy = y < top ? top - y : y > bottom ? y - bottom : 0;
+  return { dx, dy, inside: dx === 0 && dy === 0 };
+}
+
+function findBestLineIndex(x, y, lines) {
+  let bestIdx = -1;
+  let bestScore = Number.POSITIVE_INFINITY;
+  let foundInside = false;
+
+  lines.forEach((line, index) => {
+    const metrics = getLineMetrics(line);
+    const padX = Math.max(8, Math.min(30, metrics.height * 0.75));
+    const padY = Math.max(4, Math.min(12, metrics.height * 0.35));
+    const hit = getPointToRectDistance(x, y, line, padX, padY);
+
+    if (foundInside && !hit.inside) return;
+
+    const normDx = hit.dx / Math.max(metrics.width, 1);
+    const normDy = hit.dy / Math.max(metrics.height, 1);
+    const centerDx = Math.abs(x - metrics.midX) / Math.max(metrics.width, 1);
+    const centerDy = Math.abs(y - metrics.midY) / Math.max(metrics.height, 1);
+    const score = normDx * 1.6 + normDy * 2.8 + centerDx * 0.25 + centerDy * 0.35;
+
+    if (hit.inside && !foundInside) {
+      foundInside = true;
+      bestIdx = index;
+      bestScore = score;
+      return;
+    }
+
+    if (score < bestScore) {
+      bestIdx = index;
+      bestScore = score;
+    }
+  });
+
+  if (bestIdx === -1) return -1;
+
+  if (foundInside) return bestIdx;
+
+  const line = lines[bestIdx];
+  const metrics = getLineMetrics(line);
+  const hit = getPointToRectDistance(
+    x,
+    y,
+    line,
+    Math.max(8, Math.min(30, metrics.height * 0.75)),
+    Math.max(4, Math.min(12, metrics.height * 0.35))
+  );
+  const maxDx = Math.max(36, Math.min(96, metrics.width * 0.35));
+  const maxDy = Math.max(16, Math.min(36, metrics.height * 1.1));
+  return hit.dx <= maxDx && hit.dy <= maxDy ? bestIdx : -1;
+}
+
+function findNearestWord(cx, cy, items) {
+  if (!items || !items.length) return -1;
+  let best = -1, bestDist = Infinity;
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i];
+    const lineH = Math.max(it.bot - it.top, 1);
+    if (Math.abs(cy - (it.top + it.bot) / 2) > lineH * 3) continue;
+    const clampX = Math.max(it.minX, Math.min(it.maxX, cx));
+    const clampY = Math.max(it.top,  Math.min(it.bot,  cy));
+    const dist = Math.hypot(cx - clampX, cy - clampY);
+    if (dist < bestDist) { bestDist = dist; best = i; }
+  }
+  return bestDist <= 60 ? best : -1;
+}
+
+function formatSourceIndex(value) {
+  return Number(Number(value || 0).toFixed(6));
+}
+
+function createBlocksFromText(text) {
+  return normalizeText(text).split('\n').map((line, index) => ({
+    type: 'text',
+    source_idx: formatSourceIndex(index * TRANSLATION_BLOCK_STEP),
+    text: line,
+  }));
+}
+
+function normalizeBlockList(blocks, fallbackText = '') {
+  if (!Array.isArray(blocks) || !blocks.length) {
+    return createBlocksFromText(fallbackText);
+  }
+
+  const normalized = [];
+  blocks.forEach((block, index) => {
+    if (!block || typeof block !== 'object') return;
+
+    let sourceIdx = Number(block.source_idx);
+    if (!Number.isFinite(sourceIdx)) sourceIdx = index * TRANSLATION_BLOCK_STEP;
+
+    const type = String(block.type || 'text').toLowerCase();
+    if (type === 'image') {
+      if (!block.image_id || !block.image_url) return;
+      normalized.push({
+        type: 'image',
+        source_idx: formatSourceIndex(sourceIdx),
+        image_id: String(block.image_id),
+        image_url: String(block.image_url),
+        name: String(block.name || ''),
+        width: Number(block.width || 0),
+        height: Number(block.height || 0),
+      });
+      return;
+    }
+
+    const textBlock = {
+      type: 'text',
+      source_idx: formatSourceIndex(sourceIdx),
+      text: normalizeText(block.text || ''),
+      font_size: Number(block.font_size) || 10,
+      bold: !!block.bold,
+    };
+    if (block.para_idx !== undefined && block.para_idx !== null) {
+      textBlock.para_idx = Number(block.para_idx);
+    }
+    normalized.push(textBlock);
+  });
+
+  return normalized.length ? normalized : createBlocksFromText(fallbackText);
+}
+
+function normalizeBlockMatrix(pages, fallbackTexts = []) {
+  const total = Math.max(pages.length || 0, fallbackTexts.length || 0);
+  if (!total) return [];
+
+  return Array.from({ length: total }, (_, index) =>
+    normalizeBlockList(pages[index], fallbackTexts[index] || '')
+  );
+}
+
+function cloneBlocks(blocks) {
+  return normalizeBlockList(blocks, '').map(block => ({ ...block }));
+}
+
+function blocksToText(blocks) {
+  return normalizeBlockList(blocks, '')
+    .filter(block => block.type !== 'image')
+    .map(block => block.text)
+    .join('\n');
+}
+
+function areBlocksEqual(left, right) {
+  const a = normalizeBlockList(left, '');
+  const b = normalizeBlockList(right, '');
+  if (a.length !== b.length) return false;
+
+  for (let i = 0; i < a.length; i += 1) {
+    if (a[i].type !== b[i].type) return false;
+    if (a[i].source_idx !== b[i].source_idx) return false;
+    if (a[i].type === 'image') {
+      if (a[i].image_id !== b[i].image_id) return false;
+      if (a[i].image_url !== b[i].image_url) return false;
+      continue;
+    }
+    if (a[i].text !== b[i].text) return false;
+  }
+
+  return true;
+}
+
+function mapLineToParagraphIndex(lineIndex, lineCount, paraCount) {
+  if (!paraCount) return -1;
+  if (paraCount === 1) return 0;
+  if (Math.abs(lineCount - paraCount) <= 2) {
+    return Math.min(lineIndex, paraCount - 1);
+  }
+  const ratio = lineIndex / Math.max(lineCount - 1, 1);
+  return Math.min(Math.round(ratio * (paraCount - 1)), paraCount - 1);
+}
+
+function mapLineToSourceIndex(lineIndex, lineCount, blueprintBlocks) {
+  const blocks = normalizeBlockList(blueprintBlocks, '');
+  if (!blocks.length) return Number.NaN;
+
+  const targetIndex = mapLineToParagraphIndex(lineIndex, lineCount, blocks.length);
+  if (targetIndex < 0) return Number.NaN;
+  return Number(blocks[targetIndex].source_idx);
+}
+
+function findClosestParagraphBySourceIndex(paras, sourceIdx) {
+  if (!Number.isFinite(sourceIdx)) return null;
+
+  let best = null;
+  let bestDistance = Number.POSITIVE_INFINITY;
+  let bestDirectionBias = Number.POSITIVE_INFINITY;
+
+  paras.forEach(para => {
+    const paraSourceIdx = Number(para.dataset.sourceIdx);
+    if (!Number.isFinite(paraSourceIdx)) return;
+
+    const distance = Math.abs(paraSourceIdx - sourceIdx);
+    const directionBias = paraSourceIdx >= sourceIdx ? 0 : 1;
+    if (
+      distance < bestDistance ||
+      (distance === bestDistance && directionBias < bestDirectionBias)
+    ) {
+      best = para;
+      bestDistance = distance;
+      bestDirectionBias = directionBias;
+    }
+  });
+
+  return best;
+}
+
+// ── Translation overlay ───────────────────────────────────────────────────────
+// Flow translated text through the pageLines bounding boxes, covering original text.
+function renderWordHints() {
+  if (!pageWords || pageWords.items.length === 0) return;
+  // Only draw hints when words came from backend OCR (no native pdf.js text layer)
+  hlCtx.save();
+  hlCtx.strokeStyle = 'rgba(99,102,241,0.25)';
+  hlCtx.lineWidth = 1;
+  for (const w of pageWords.items) {
+    hlCtx.strokeRect(w.minX, w.top, w.maxX - w.minX, w.bot - w.top);
+  }
+  hlCtx.restore();
+}
+
+// Wrap `text` into lines that fit within `maxW` canvas pixels.
+function wrapTextToWidth(ctx, text, maxW) {
+  if (!text || maxW <= 0) return [];
+  const result = [];
+  let cur = '';
+  for (const ch of Array.from(text)) {
+    if (ch === '\n') { result.push(cur); cur = ''; continue; }
+    const test = cur + ch;
+    if (cur.length > 0 && ctx.measureText(test).width > maxW) {
+      result.push(cur);
+      cur = ch;
+    } else {
+      cur = test;
+    }
+  }
+  if (cur) result.push(cur);
+  return result;
+}
+
+// Overlay using native PDF block bboxes for accurate positioning.
+function renderOverlayWithSourceBlocks(sourceBlocks, transBlocks, fontSize, lineSpacing, lineBoxes = []) {
+  const W = hlCanvas.width, H = hlCanvas.height;
+  const visibleSourceBlocks = sourceBlocks.filter(sb =>
+    Number.isFinite(Number(sb.left)) && Number.isFinite(Number(sb.right)) &&
+    Number.isFinite(Number(sb.top))  && Number.isFinite(Number(sb.bottom)) &&
+    Number(sb.right) > Number(sb.left) && Number(sb.bottom) > Number(sb.top) &&
+    (Number(sb.right) - Number(sb.left)) > 0.003
+  );
+  if (!visibleSourceBlocks.length) return;
+
+  // Backend extraction already uses column-aware reading order. Re-sorting here
+  // breaks two-column native PDFs by interleaving left/right columns.
+  const orderedBlocks = visibleSourceBlocks.slice();
+
+  const totalSourceChars = orderedBlocks.reduce((s, b) => s + Math.max(Number(b.chars) || 1, 1), 0);
+  const totalTransChars  = transBlocks.reduce((s, b) => s + Math.max((b.text || '').length, 1), 0);
+
+  let cumS = 0;
+  const srcRanges = orderedBlocks.map(sb => {
+    const c = Math.max(Number(sb.chars) || 1, 1);
+    const fS = cumS / totalSourceChars;
+    cumS += c;
+    return { ...sb, fS, fE: cumS / totalSourceChars };
+  });
+
+  let cumT = 0;
+  const trRanges = transBlocks.map((tb, idx) => {
+    const c = Math.max((tb.text || '').length, 1);
+    const fS = cumT / totalTransChars;
+    cumT += c;
+    return { ...tb, fS, fE: cumT / totalTransChars, idx };
+  });
+
+  const normalizeTextChunk = s => String(s || '').replace(/\r/g, '').trim();
+
+  const orderedTrans = trRanges
+    .slice()
+    .sort((a, b) => (a.fS - b.fS) || (a.idx - b.idx))
+    .map(tr => ({ ...tr, normText: normalizeTextChunk(tr.text) }))
+    .filter(tr => tr.normText);
+
+  const buildMappedTextsByDirectIndex = () => {
+    const buckets = srcRanges.map(() => []);
+    if (!srcRanges.length) return buckets;
+    orderedTrans.forEach((tr, i) => {
+      const idx = Math.min(srcRanges.length - 1, i);
+      buckets[idx].push(tr.normText);
+    });
+    return buckets;
+  };
+
+  const buildMappedTextsSequentially = () => {
+    const buckets = srcRanges.map(() => []);
+    if (!srcRanges.length) return buckets;
+
+    let si = 0;
+    let used = 0;
+    orderedTrans.forEach(tr => {
+      const textLen = Array.from(tr.normText).length;
+      while (si < srcRanges.length - 1) {
+        const cap = Math.max(Number(srcRanges[si].chars) || 1, 1);
+        const srH = Number(srcRanges[si].bottom) - Number(srcRanges[si].top);
+        const tinyForLong = textLen > 80 && (cap < 24 || srH < 0.012);
+        if (!tinyForLong && used < cap * 0.75) break;
+        si += 1;
+        used = 0;
+      }
+      buckets[si].push(tr.normText);
+      used += textLen;
+      const cap = Math.max(Number(srcRanges[si].chars) || 1, 1);
+      if (used >= cap * 0.9 && si < srcRanges.length - 1) {
+        si += 1;
+        used = 0;
+      }
+    });
+    return buckets;
+  };
+
+  const buildMappedTextsByIndex = () => {
+    const buckets = srcRanges.map(() => []);
+    const m = srcRanges.length;
+    const n = orderedTrans.length;
+    if (!m || !n) return buckets;
+    orderedTrans.forEach((tr, i) => {
+      const idx = Math.min(m - 1, Math.floor(((i + 0.5) * m) / n));
+      buckets[idx].push(tr.normText);
+    });
+    return buckets;
+  };
+
+  const bucketCharLen = parts => Array.from(parts.join('\n')).length;
+  const isOverloaded = buckets => {
+    if (!buckets.length) return false;
+    let overloaded = 0;
+    buckets.forEach((parts, idx) => {
+      const cap = Math.max(Number(srcRanges[idx].chars) || 1, 1);
+      const used = bucketCharLen(parts);
+      if (used > cap * 1.8) overloaded += 1;
+    });
+    return overloaded / buckets.length > 0.22;
+  };
+
+  const countsAreClose = Math.abs(orderedTrans.length - srcRanges.length) <= Math.max(2, Math.floor(srcRanges.length * 0.25));
+  let mappedTexts = countsAreClose ? buildMappedTextsByDirectIndex() : buildMappedTextsSequentially();
+  if (!countsAreClose && isOverloaded(mappedTexts)) {
+    mappedTexts = buildMappedTextsByIndex();
+  }
+  const mappedTextsJoined = mappedTexts.map(parts => parts.join('\n\n'));
+
+  const lineHeights = (lineBoxes || [])
+    .map(l => Math.max(Number(l.bot) - Number(l.top), 1))
+    .filter(h => Number.isFinite(h) && h > 0)
+    .sort((a, b) => a - b);
+  const medianLineH = lineHeights[Math.floor(lineHeights.length / 2)] || Math.max(10, lineSpacing || fontSize * 1.2);
+
+  const sourceLineCountForBox = (x, y, w, h) => {
+    if (!lineBoxes || !lineBoxes.length) {
+      return Math.max(1, Math.round(h / medianLineH));
+    }
+    const x0 = x, x1 = x + w, y0 = y, y1 = y + h;
+    const count = lineBoxes.filter(l => {
+      const lx0 = Number(l.minX), lx1 = Number(l.maxX);
+      const ly0 = Number(l.top), ly1 = Number(l.bot);
+      if (![lx0, lx1, ly0, ly1].every(Number.isFinite)) return false;
+      const cy = (ly0 + ly1) / 2;
+      const overlapX = Math.min(x1, lx1) - Math.max(x0, lx0);
+      return cy >= y0 - 3 && cy <= y1 + 3 && overlapX > Math.min(w, lx1 - lx0) * 0.18;
+    }).length;
+    return Math.max(1, count || Math.round(h / medianLineH));
+  };
+
+  const fitFontSizeToBox = (text, boxW, boxH, preferredFs, minFs, lsMult) => {
+    const hardMin = 8;
+    const floorFs = Math.max(hardMin, Math.round(minFs));
+    if (!text || !text.trim() || boxW <= 6 || boxH <= 6) {
+      return { fs: Math.max(floorFs, Math.round(preferredFs)), ls: Math.max(1, Math.round(preferredFs)) * lsMult };
+    }
+    const target = Math.max(floorFs, Math.round(preferredFs));
+    const testFits = fs => {
+      const ls = fs * lsMult;
+      hlCtx.save();
+      hlCtx.font = `${fs}px "Microsoft JhengHei","Noto Sans TC","Segoe UI",sans-serif`;
+      const lines = wrapTextToWidth(hlCtx, text, Math.max(1, boxW - 4));
+      hlCtx.restore();
+      const usedH = Math.max(lines.length, 1) * ls;
+      const usableH = Math.max(4, boxH - 4);
+      return usedH <= usableH * 0.98;
+    };
+    if (testFits(target)) return { fs: target, ls: target * lsMult };
+
+    let lo = floorFs;
+    let hi = target;
+    while (lo < hi) {
+      const mid = Math.floor((lo + hi + 1) / 2);
+      if (testFits(mid)) lo = mid;
+      else hi = mid - 1;
+    }
+    return { fs: lo, ls: lo * lsMult };
+  };
+
+  const blockFontMetrics = (x, y, w, h, text) => {
+    // Size native-PDF overlay from the paragraph's own source box.
+    const sourceLines = sourceLineCountForBox(x, y, w, h);
+    const sourceLineH = h / Math.max(sourceLines, 1);
+    const maxFs = Math.max(10, Math.round(fontSize * 1.22));
+    const baseFs = Math.min(maxFs, Math.max(8, Math.round(sourceLineH * 0.70)));
+    const minFs = Math.max(7, Math.min(baseFs, Math.round(baseFs * 0.70)));
+    let metric = fitFontSizeToBox(text, w, h, baseFs, minFs, 1.18);
+    // Dense translated paragraphs get tighter line spacing before becoming unreadably small.
+    if (metric.fs <= minFs) {
+      metric = fitFontSizeToBox(text, w, h, minFs, minFs, 1.08);
+    }
+    return metric;
+  };
+
+  srcRanges.forEach((sr, srIdx) => {
+    const text = mappedTextsJoined[srIdx] || '';
+    if (!text) return;
+    const x = Number(sr.left) * W, y = Number(sr.top) * H;
+    const w = (Number(sr.right) - Number(sr.left)) * W;
+    const h = (Number(sr.bottom) - Number(sr.top)) * H;
+    const { fs, ls } = blockFontMetrics(x, y, w, h, text);
+    renderTextInBox(hlCtx, text, x, y, w, h, fs, ls);
+  });
+}
+
+
+function orderScannedOverlayLines(lines, canvasW) {
+  const clean = lines
+    .filter(l => Number.isFinite(l.top) && Number.isFinite(l.bot) && Number.isFinite(l.minX) && Number.isFinite(l.maxX))
+    .filter(l => l.maxX > l.minX && l.bot > l.top);
+  if (clean.length < 8) return clean.sort((a, b) => a.top - b.top || a.minX - b.minX);
+
+  const mids = clean.map(l => (l.minX + l.maxX) / 2);
+  const midPage = canvasW / 2;
+  const leftCount = mids.filter(x => x < midPage * 0.92).length;
+  const rightCount = mids.filter(x => x > midPage * 1.08).length;
+  const twoCol = leftCount >= 5 && rightCount >= 5 && Math.min(leftCount, rightCount) / clean.length > 0.22;
+  if (!twoCol) return clean.sort((a, b) => a.top - b.top || a.minX - b.minX);
+
+  const fullWidth = clean.filter(l => (l.maxX - l.minX) > canvasW * 0.68);
+  const narrow = clean.filter(l => (l.maxX - l.minX) <= canvasW * 0.68);
+  const left = narrow.filter(l => (l.minX + l.maxX) / 2 < midPage);
+  const right = narrow.filter(l => (l.minX + l.maxX) / 2 >= midPage);
+  const sortLine = (a, b) => a.top - b.top || a.minX - b.minX;
+  const topFull = fullWidth.filter(l => l.bot <= Math.min(...narrow.map(n => n.top)) + 2).sort(sortLine);
+  const bottomFull = fullWidth.filter(l => l.top > Math.max(...narrow.map(n => n.bot)) - 2).sort(sortLine);
+  const midFull = fullWidth.filter(l => !topFull.includes(l) && !bottomFull.includes(l)).sort(sortLine);
+  return [
+    ...topFull,
+    ...left.sort(sortLine),
+    ...right.sort(sortLine),
+    ...midFull,
+    ...bottomFull,
+  ];
+}
+
+function takeFittingText(ctx, text, maxW) {
+  let out = '';
+  let end = 0;
+  const chars = Array.from(text);
+  while (end < chars.length && /\s/.test(chars[end])) end++;
+  for (; end < chars.length; end++) {
+    const test = out + chars[end];
+    if (out && ctx.measureText(test).width > maxW) break;
+    out = test;
+  }
+  return { text: out.trimEnd(), used: end };
+}
+
+function buildScannedOverlayParagraphs(lines, canvasW) {
+  const ordered = orderScannedOverlayLines(lines, canvasW);
+  if (!ordered.length) return [];
+
+  const heights = ordered.map(l => Math.max(l.bot - l.top, 4)).sort((a, b) => a - b);
+  const medianH = heights[Math.floor(heights.length / 2)] || 14;
+  const midPage = canvasW / 2;
+  const paragraphs = [];
+  let cur = [];
+  let curCol = null;
+
+  const lineCol = line => {
+    const midX = (line.minX + line.maxX) / 2;
+    if ((line.maxX - line.minX) > canvasW * 0.68) return 'full';
+    return midX < midPage ? 'left' : 'right';
+  };
+  const flush = () => {
+    if (!cur.length) return;
+    const minX = Math.min(...cur.map(l => l.minX));
+    const maxX = Math.max(...cur.map(l => l.maxX));
+    const top = cur[0].top;
+    const bot = cur[cur.length - 1].bot;
+    paragraphs.push({ lines: cur, minX, maxX, top, bot });
+    cur = [];
+    curCol = null;
+  };
+
+  for (const line of ordered) {
+    const col = lineCol(line);
+    if (!cur.length) {
+      cur = [line];
+      curCol = col;
+      continue;
+    }
+
+    const prev = cur[cur.length - 1];
+    const gap = line.top - prev.bot;
+    const sameCol = col === curCol || col === 'full' || curCol === 'full';
+    const curLeft = Math.min(...cur.map(l => l.minX));
+    const curRight = Math.max(...cur.map(l => l.maxX));
+    const curWidth = Math.max(curRight - curLeft, 1);
+    const prevWidth = Math.max(prev.maxX - prev.minX, 1);
+    const lineIndent = line.minX - curLeft;
+    const indentThreshold = Math.max(10, medianH * 0.8);
+    const firstLineIndent = sameCol && cur.length >= 2 && lineIndent > indentThreshold && gap > -medianH * 0.2;
+    const afterShortLine = sameCol && cur.length >= 2 && prevWidth < curWidth * 0.78 && line.minX <= curLeft + indentThreshold && gap > -medianH * 0.2;
+    const newPara = !sameCol || gap > medianH * 0.85 || firstLineIndent || afterShortLine;
+
+    if (newPara) {
+      flush();
+      cur = [line];
+      curCol = col;
+    } else {
+      cur.push(line);
+    }
+  }
+  flush();
+  return paragraphs.filter(p => (p.maxX - p.minX) > 40 && (p.bot - p.top) > medianH * 0.7);
+}
+
+function renderTextInBox(ctx, text, x, y, w, h, fontSize, lineSpacing) {
+  const box = document.createElement('div');
+  box.className = 'overlay-text-box';
+  box.style.left = x + 'px';
+  box.style.top = y + 'px';
+  box.style.width = w + 'px';
+  box.style.height = h + 'px';
+  box.style.fontSize = fontSize + 'px';
+  box.style.lineHeight = lineSpacing + 'px';
+  box.style.fontFamily = '"Microsoft JhengHei","Noto Sans TC","Segoe UI",sans-serif';
+  box.textContent = text;
+  textOverlayLayer.appendChild(box);
+}
+
+function splitTextForOverlayParas(text, paraCount) {
+  const clean = normalizeText(text || '').trim();
+  if (paraCount <= 0) return [];
+  if (paraCount === 1) return [clean];
+
+  const paras = clean.split(/\n\s*\n+/).map(p => p.trim()).filter(Boolean);
+  if (paras.length === paraCount) return paras;
+
+  const lines = clean.split(/\n+/).map(line => line.trim()).filter(Boolean);
+  if (lines.length === paraCount) return lines;
+
+  const chunks = paras.length ? paras : lines;
+  if (chunks.length >= paraCount) {
+    return chunks.slice(0, paraCount - 1).concat(chunks.slice(paraCount - 1).join('\n'));
+  }
+  return chunks.concat(Array(Math.max(0, paraCount - chunks.length)).fill(''));
+}
+
+function renderOverlayScannedMarkup(parasMeta, blocks, fontSize, lineSpacing) {
+  if (!parasMeta || !parasMeta.length) return false;
+  const W = hlCanvas.width, H = hlCanvas.height;
+  const orderedParas = parasMeta
+    .filter(pm => pm && Number.isFinite(Number(pm.left)) && Number.isFinite(Number(pm.right)) &&
+      Number.isFinite(Number(pm.top)) && Number.isFinite(Number(pm.bottom)))
+    .slice()
+    .sort((a, b) => {
+      const ai = (a.idx !== undefined) ? Number(a.idx) : Number(a.para_idx);
+      const bi = (b.idx !== undefined) ? Number(b.idx) : Number(b.para_idx);
+      if (Number.isFinite(ai) && Number.isFinite(bi) && ai !== bi) return ai - bi;
+      return Number(a.top) - Number(b.top) || Number(a.left) - Number(b.left);
+    });
+  if (!orderedParas.length) return false;
+
+  // Group translated blocks by para_idx, with fallback to source_idx mapping
+  const byPara = {};
+  const textBlocks = (blocks || []).filter(b => b && b.type !== 'image' && b.text && b.text.trim());
+  const hasExplicitPara = textBlocks.some(b => b.para_idx !== undefined && b.para_idx !== null && !Number.isNaN(Number(b.para_idx)));
+
+  if (!hasExplicitPara) {
+    const fallbackTexts = splitTextForOverlayParas(textBlocks.map(b => b.text).join('\n'), orderedParas.length);
+    fallbackTexts.forEach((text, i) => {
+      const pm = orderedParas[Math.min(i, orderedParas.length - 1)];
+      const pi = (pm.idx !== undefined) ? pm.idx : pm.para_idx;
+      if (pi === undefined || pi === null || !text.trim()) return;
+      if (!byPara[pi]) byPara[pi] = [];
+      byPara[pi].push(text);
+    });
+  } else {
+    for (const b of textBlocks) {
+      let pi = b.para_idx;
+      if (pi === undefined || pi === null) {
+        // Fallback: derive para_idx from source_idx (pi * 1000)
+        pi = Math.round(Number(b.source_idx || 0) / TRANSLATION_BLOCK_STEP);
+      }
+      if (pi === undefined || pi === null || Number.isNaN(pi)) continue;
+      if (!byPara[pi]) byPara[pi] = [];
+      byPara[pi].push(b.text);
+    }
+  }
+
+  // Render each paragraph at its backend-supplied bounding box
+  let rendered = 0;
+  for (const pm of orderedParas) {
+    const idx = (pm.idx !== undefined) ? pm.idx : pm.para_idx;
+    if (idx === undefined || idx === null) continue;
+    
+    const texts = byPara[idx];
+    if (!texts || !texts.length) continue;
+    const text = texts.filter(Boolean).join('\n');
+    if (!text.trim()) continue;
+    
+    const x = pm.left * W;
+    const y = pm.top  * H;
+    const w = (pm.right  - pm.left) * W;
+    const h = (pm.bottom - pm.top)  * H;
+    if (w < 4 || h < 4) continue;
+    
+    renderTextInBox(hlCtx, text, x, y, w, h, fontSize, lineSpacing);
+    rendered++;
+  }
+  return rendered > 0;
+}
+
+function renderOverlayScannedPdf(pageNum, blocks, fontSize, lineSpacing) {
+  const parasMeta = pageOcrParas[pageNum - 1];
+  return renderOverlayScannedMarkup(parasMeta, blocks, fontSize, lineSpacing);
+}
+
+function renderOverlay(pageNum) {
+  try {
+    hlCtx.clearRect(0, 0, hlCanvas.width, hlCanvas.height);
+    textOverlayLayer.innerHTML = '';
+    if (!overlayMode) {
+      if (pageWordsFromBackend) renderWordHints();
+      return;
+    }
+
+    const blocks = (translatedPageBlocks[pageNum - 1] || []).filter(
+      b => b.type !== 'image' && b.text && b.text.trim()
+    );
+    if (!blocks.length) return;
+
+    const srcBlocks = pageSourceBlocks[pageNum - 1];
+    const ocrParas = pageOcrParas[pageNum - 1];
+    const isScannedPath = !!(ocrParas && ocrParas.length);
+
+    // Font size from median line height.
+    // Keep OCR path unchanged; tune only general/native PDF path.
+    const heights = (pageLines || []).map(l => Math.max(l.bot - l.top, 4)).sort((a, b) => a - b);
+    const medianH = heights[Math.floor(heights.length / 2)] || 14;
+    const fontSize = isScannedPath
+      ? Math.min(Math.max(Math.round(medianH * 0.70), 8), Math.round(12 * pdfScale))
+      : Math.min(Math.max(Math.round(medianH * 0.55), 9), Math.round(10.5 * pdfScale));
+    const lineSpacing = isScannedPath ? (fontSize * 1.32) : (fontSize * 1.22);
+    hlCtx.font = `${fontSize}px "Microsoft JhengHei","Noto Sans TC","Segoe UI",sans-serif`;
+    hlCtx.textBaseline = 'top';
+    let rendered = false;
+
+    if (ocrParas && ocrParas.length) {
+      // Scanned PDF processed with markup paragraph mapping — use para_idx positions
+      rendered = renderOverlayScannedMarkup(ocrParas, blocks, fontSize, lineSpacing);
+    }
+
+    if (!rendered && pageWordsFromBackend && (pageLines || []).length) {
+      const W = hlCanvas.width, H = hlCanvas.height;
+      const derivedParas = buildScannedOverlayParagraphs(pageLines, W).map((p, idx) => ({
+        idx,
+        left: p.minX / W,
+        right: p.maxX / W,
+        top: p.top / H,
+        bottom: p.bot / H,
+      }));
+      rendered = renderOverlayScannedMarkup(derivedParas, blocks, fontSize, lineSpacing);
+    }
+
+    if (!rendered && srcBlocks && srcBlocks.length > 0) {
+      renderOverlayWithSourceBlocks(srcBlocks, blocks, fontSize, lineSpacing, pageLines);
+    } else if (!rendered && (pageLines || []).length) {
+      // No OCR source blocks: derive pseudo-source-blocks from native page_lines so
+      // the fraction-overlap algorithm can still position translations accurately.
+      const W = hlCanvas.width, H = hlCanvas.height;
+      const pseudoBlocks = pageLines.map(line => ({
+        left:   line.minX / W,
+        right:  line.maxX / W,
+        top:    line.top  / H,
+        bottom: line.bot  / H,
+        chars:  Math.max(1, Math.round(line.maxX - line.minX)),
+      }));
+      renderOverlayWithSourceBlocks(pseudoBlocks, blocks, fontSize, lineSpacing, pageLines);
+    }
+  } catch (e) {
+    console.error('renderOverlay error:', e);
+  }
+}
+
+// ── Translation pane zoom ─────────────────────────────────────────────────────
+let transZoom = 1.0;
+const TRANS_ZOOM_STEPS = [0.5, 0.67, 0.75, 0.8, 0.9, 1.0, 1.1, 1.25, 1.5, 1.75, 2.0];
+
+function applyTransZoom() {
+  document.querySelector('.word-paper').style.zoom = transZoom;
+  document.getElementById('trans-zoom-label').textContent = Math.round(transZoom * 100) + '%';
+  scheduleA4PageBreaks();
+}
+
+document.getElementById('trans-zoom-out').addEventListener('click', () => {
+  let idx = TRANS_ZOOM_STEPS.indexOf(transZoom);
+  if (idx < 0) idx = TRANS_ZOOM_STEPS.indexOf(1.0);
+  transZoom = TRANS_ZOOM_STEPS[Math.max(0, idx - 1)];
+  applyTransZoom();
+});
+document.getElementById('trans-zoom-in').addEventListener('click', () => {
+  let idx = TRANS_ZOOM_STEPS.indexOf(transZoom);
+  if (idx < 0) idx = TRANS_ZOOM_STEPS.indexOf(1.0);
+  transZoom = TRANS_ZOOM_STEPS[Math.min(TRANS_ZOOM_STEPS.length - 1, idx + 1)];
+  applyTransZoom();
+});
+
+// ── A4 auto page breaks ───────────────────────────────────────────────────────
+// word-paper: width 794px, min-height 1123px, padding 1.5rem (24px) top/bottom
+const A4_CONTENT_HEIGHT_PX = 1123 - 24 - 24; // 1075px usable per page
+
+let a4BreakTimer = null;
+function scheduleA4PageBreaks() {
+  clearTimeout(a4BreakTimer);
+  a4BreakTimer = setTimeout(() => requestAnimationFrame(insertA4PageBreaks), 150);
+}
+
+function insertA4PageBreaks() {
+  transBody.querySelectorAll('.a4-page-break').forEach(el => el.remove());
+
+  const blocks = Array.from(transBody.children).filter(
+    n => !n.classList.contains('a4-page-break') && !n.classList.contains('word-page-break')
+  );
+  if (!blocks.length) return;
+
+  const bodyTop = transBody.getBoundingClientRect().top;
+  const breakBefore = [];
+  let threshold = A4_CONTENT_HEIGHT_PX;
+  let pageNum = 2;
+
+  for (const block of blocks) {
+    const rect = block.getBoundingClientRect();
+    // getBoundingClientRect returns viewport pixels; divide by transZoom to get CSS pixels
+    const blockTop    = (rect.top    - bodyTop) / transZoom;
+    const blockBottom = (rect.bottom - bodyTop) / transZoom;
+    if (blockTop >= threshold || blockBottom > threshold + 4) {
+      breakBefore.push({ block, pageNum });
+      threshold += A4_CONTENT_HEIGHT_PX;
+      pageNum++;
+    }
+  }
+
+  for (const { block, pageNum: pn } of breakBefore) {
+    const sep = document.createElement('div');
+    sep.className = 'a4-page-break';
+    sep.contentEditable = 'false';
+    sep.dataset.blockType = 'a4-page-break';
+    sep.dataset.pageLabel = `第 ${pn} 頁`;
+    transBody.insertBefore(sep, block);
+  }
+  updateWordPageEst();
+}
+
+// ── Per-block font size & bold ────────────────────────────────────────────────
+const FONT_SIZE_STEPS = [8, 9, 10, 11, 12, 14, 16, 18, 24];
+
+function getActiveParagraphBlock() {
+  const sel = window.getSelection();
+  if (sel && sel.rangeCount > 0) {
+    const node = sel.getRangeAt(0).startContainer;
+    const el = node.nodeType === 1 ? node : node.parentElement;
+    const block = el?.closest?.('.trans-para');
+    if (block && transBody.contains(block)) return block;
+  }
+  return null;
+}
+
+function updateFormatButtonState(block) {
+  const display = document.getElementById('block-font-size-display');
+  const boldBtn = document.getElementById('bold-btn');
+  if (!block) {
+    if (display && !display.textContent) display.textContent = '10pt';
+    if (boldBtn) boldBtn.classList.remove('active');
+    return;
+  }
+  const fs = parseInt(block.dataset.fontSize || '10', 10);
+  if (display) display.textContent = fs + 'pt';
+  if (boldBtn) boldBtn.classList.toggle('active', block.dataset.bold === 'true');
+}
+
+function changeBlockFontSize(delta) {
+  const block = getActiveParagraphBlock();
+  if (!block) return;
+  const current = parseInt(block.dataset.fontSize || '10', 10);
+  let idx = FONT_SIZE_STEPS.indexOf(current);
+  if (idx < 0) idx = FONT_SIZE_STEPS.indexOf(10);
+  const newSize = FONT_SIZE_STEPS[Math.max(0, Math.min(FONT_SIZE_STEPS.length - 1, idx + delta))];
+  block.dataset.fontSize = String(newSize);
+  block.style.fontSize = newSize + 'pt';
+  updateFormatButtonState(block);
+  scheduleSave();
+  updateWordPageEst();
+  scheduleA4PageBreaks();
+}
+
+function toggleBlockBold() {
+  const block = getActiveParagraphBlock();
+  if (!block) return;
+  const isBold = block.dataset.bold === 'true';
+  block.dataset.bold = isBold ? 'false' : 'true';
+  block.style.fontWeight = isBold ? '' : 'bold';
+  updateFormatButtonState(block);
+  scheduleSave();
+  scheduleA4PageBreaks();
+}
+
+// Keep focus in editor when clicking format buttons
+['font-decrease-btn', 'font-increase-btn', 'bold-btn'].forEach(id => {
+  document.getElementById(id).addEventListener('mousedown', e => e.preventDefault());
+});
+document.getElementById('font-decrease-btn').addEventListener('click', () => changeBlockFontSize(-1));
+document.getElementById('font-increase-btn').addEventListener('click', () => changeBlockFontSize(+1));
+document.getElementById('bold-btn').addEventListener('click', () => toggleBlockBold());
+
+// Update button state on selection change
+document.addEventListener('selectionchange', () => {
+  if (document.activeElement === transBody || transBody.contains(document.activeElement)) {
+    updateFormatButtonState(getActiveParagraphBlock());
+  }
+});
+
+// ── Word page estimate & visual page breaks ───────────────────────────────────
+const CHARS_PER_PAGE = 800;
+const IMAGE_CHAR_EQUIV = 400;
+
+function updateWordPageEst() {
+  const el = document.getElementById('word-page-est');
+  if (!el) return;
+  if (!currentPage || !totalPages) { el.textContent = ''; return; }
+  const reading = getReadingWordPageInfo();
+  const compare = getReadingCompareWordPageInfo();
+  el.textContent = `第 ${currentPage}/${totalPages} PDF頁 · 閱讀版 ${reading.current}/${reading.total} 頁 · 對照版 ${compare.current}/${compare.total} 頁`;
+}
+
+function getCurrentRenderedWordPage(wordPages) {
+  const outer = document.getElementById('trans-pane-outer');
+  if (!outer || wordPages <= 1) return 1;
+
+  const viewportMid = outer.getBoundingClientRect().top + outer.clientHeight / 2;
+  let page = 1;
+  transBody.querySelectorAll('.a4-page-break').forEach(sep => {
+    if (sep.getBoundingClientRect().top <= viewportMid) page++;
+  });
+  return Math.max(1, Math.min(wordPages, page));
+}
+
+function estimateWordPagesForBlocks(blocks) {
+  if (!Array.isArray(blocks) || blocks.length === 0) return 1;
+  let weightedChars = 0;
+  blocks.forEach(block => {
+    if (block?.type === 'image') {
+      weightedChars += IMAGE_CHAR_EQUIV;
+      return;
+    }
+    const textLen = Array.from(String(block?.text || '')).length;
+    const fontSize = Math.max(8, Number(block?.font_size || 10));
+    const boldFactor = block?.bold ? 1.08 : 1;
+    weightedChars += textLen * (fontSize / 10) * boldFactor;
+  });
+  return Math.max(1, Math.ceil(weightedChars / CHARS_PER_PAGE));
+}
+
+function getReadingPageCounts(currentPageWordPages) {
+  const pageCounts = translatedPageBlocks.map((blocks, idx) => (
+    idx === currentPage - 1 ? currentPageWordPages : estimateWordPagesForBlocks(blocks)
+  ));
+  while (pageCounts.length < totalPages) pageCounts.push(1);
+  return pageCounts;
+}
+
+function getReadingWordPageInfo() {
+  const currentPageWordPages = transBody.querySelectorAll('.a4-page-break').length + 1;
+  const pageCounts = getReadingPageCounts(currentPageWordPages);
+  const previousPages = pageCounts
+    .slice(0, Math.max(currentPage - 1, 0))
+    .reduce((sum, count) => sum + count, 0);
+  const currentInPage = getCurrentRenderedWordPage(currentPageWordPages);
+  const totalWordPages = Math.max(1, pageCounts.reduce((sum, count) => sum + count, 0));
+
+  return {
+    current: Math.max(1, Math.min(totalWordPages, previousPages + currentInPage)),
+    total: totalWordPages,
+  };
+}
+
+function getReadingCompareWordPageInfo() {
+  const currentPageWordPages = transBody.querySelectorAll('.a4-page-break').length + 1;
+  const readingPageCounts = getReadingPageCounts(currentPageWordPages);
+  const comparePageCounts = readingPageCounts.map(count => 1 + count);
+  const previousPages = comparePageCounts
+    .slice(0, Math.max(currentPage - 1, 0))
+    .reduce((sum, count) => sum + count, 0);
+  const currentInPage = getCurrentRenderedWordPage(currentPageWordPages);
+  const totalWordPages = Math.max(1, comparePageCounts.reduce((sum, count) => sum + count, 0));
+
+  return {
+    current: Math.max(1, Math.min(totalWordPages, previousPages + 1 + currentInPage)),
+    total: totalWordPages,
+  };
+}
+
+document.getElementById('trans-pane-outer')?.addEventListener('scroll', updateWordPageEst);
+
+// ── Overlay diagnostics ──────────────────────────────────────────────────────
+document.getElementById('overlay-diag-btn').addEventListener('click', () => {
+  const pg = currentPage;
+  const pages = [];
+  for (let i = 1; i <= totalPages; i++) {
+    const srcBlocks = pageSourceBlocks[i - 1] || [];
+    const transBlocks = (translatedPageBlocks[i - 1] || []).filter(
+      b => b.type !== 'image' && b.text && b.text.trim()
+    );
+    const ocrParas = pageOcrParas[i - 1] || [];
+    const strategy = ocrParas.length ? 'scanned_ocr_paragraphs'
+      : (pageWordsFromBackend ? 'scanned_derived_paragraphs'
+        : (srcBlocks.length ? 'native_source_blocks' : 'line_fallback'));
+    const entry = {
+      page: i,
+      overlay_strategy: strategy,
+      source_blocks: srcBlocks,
+      translated_blocks: transBlocks.map(b => ({ text: b.text, source_idx: b.source_idx, para_idx: b.para_idx })),
+      page_ocr_paras: ocrParas,
+      page_word_map: pageWordMaps[i - 1] || [],
+    };
+    if (i === pg) {
+      entry.canvas_w = hlCanvas ? hlCanvas.width : null;
+      entry.canvas_h = hlCanvas ? hlCanvas.height : null;
+      entry.page_lines = pageLines.map(l => ({ top: l.top, bot: l.bot, minX: l.minX, maxX: l.maxX }));
+      entry.scanned_paragraphs = (ocrParas.length || pageWordsFromBackend) && hlCanvas
+        ? buildScannedOverlayParagraphs(pageLines, hlCanvas.width).map(p => ({
+            top: p.top, bot: p.bot, minX: p.minX, maxX: p.maxX, line_count: p.lines.length
+          }))
+        : [];
+    }
+    pages.push(entry);
+  }
+  const diag = {
+    job_id: currentJobId,
+    url_job: new URLSearchParams(location.search).get('job') || null,
+    source_name: currentSourceName,
+    result_updated_at: currentResultUpdatedAt,
+    exported_at: new Date().toISOString(),
+    total_pages: totalPages,
+    current_page: pg,
+    page_words_from_backend: pageWordsFromBackend,
+    pages,
+  };
+  const blob = new Blob([JSON.stringify(diag, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `issue_report_${currentSourceName || currentJobId}.json`;
+  a.click();
+});
+
+document.getElementById('overlay-btn').addEventListener('click', () => {
+  overlayMode = !overlayMode;
+  document.getElementById('overlay-btn').classList.toggle('active', overlayMode);
+  const overlayTools = document.getElementById('overlay-tools');
+  overlayTools.style.display = overlayMode ? 'flex' : 'none';
+  if (overlayMode) {
+    renderOverlay(currentPage);
+  } else {
+    hlCtx.clearRect(0, 0, hlCanvas.width, hlCanvas.height);
+    textOverlayLayer.innerHTML = '';
+    if (pageWordsFromBackend) renderWordHints();
+  }
+});
+
+
+// Map a clicked word to a 0–1 ratio in the original backend-extracted text.
+// Strategy: build a short phrase from the clicked item + same-line neighbours,
+// then search for it (or progressively shorter sub-phrases) inside `originalText`.
+// Among multiple hits, pick the one closest to the charOffset "seed" ratio so
+// common short words don't anchor to the wrong occurrence.
+// Falls back to charOffset ratio when no match is found.
+function mapWordToOriginalRatio(wordIdx, pWords, originalText, cx, cy, canvasW, canvasH) {
+  const wItem = pWords.items[wordIdx];
+
+  // Column-aware seed: use visual Y position within the correct column half,
+  // so left-column clicks map to 0–leftFrac and right-column clicks to leftFrac–1.
+  const midX = canvasW / 2;
+  const leftItems  = pWords.items.filter(it => (it.minX + it.maxX) / 2 < midX);
+  const rightItems = pWords.items.filter(it => (it.minX + it.maxX) / 2 >= midX);
+  const twoCol = leftItems.length > 5 && rightItems.length > 5
+    && Math.min(leftItems.length, rightItems.length) / pWords.items.length > 0.15;
+
+  let seedRatio;
+  if (twoCol) {
+    const leftChars  = leftItems.reduce( (s, it) => s + it.text.length + 1, 0);
+    const rightChars = rightItems.reduce((s, it) => s + it.text.length + 1, 0);
+    const leftFrac = leftChars / Math.max(leftChars + rightChars, 1);
+    const yRatio   = cy / Math.max(canvasH - 1, 1);
+    seedRatio = cx >= midX
+      ? leftFrac + yRatio * (1 - leftFrac)
+      : yRatio * leftFrac;
+  } else {
+    seedRatio = wItem.charOffset / Math.max(pWords.totalChars - 1, 1);
+  }
+
+  if (!originalText) return seedRatio;
+
+  // Extract the specific word at the click X position inside the text item.
+  // pdf.js sometimes packs an entire line into one item; we pick the word
+  // proportional to how far cx is across the item's bounding box.
+  const words = wItem.text.trim().split(/\s+/);
+  let query;
+  if (words.length <= 1) {
+    query = wItem.text.toLowerCase().trim();
+  } else {
+    const xFrac = Math.max(0, Math.min(1,
+      (cx - wItem.minX) / Math.max(wItem.maxX - wItem.minX, 1)));
+    const wi = Math.min(Math.floor(xFrac * words.length), words.length - 1);
+    query = words[wi].toLowerCase().trim();
+  }
+  // Strip punctuation that wouldn't appear in the extracted text
+  query = query.replace(/^[^a-z0-9一-鿿]+|[^a-z0-9一-鿿]+$/gi, '');
+  if (query.length < 2) return seedRatio;
+
+  const lowerOrig = originalText.toLowerCase();
+  const origLen   = Math.max(originalText.length - 1, 1);
+  let bestPos = -1, bestDelta = Infinity, pos = 0;
+  while (true) {
+    const found = lowerOrig.indexOf(query, pos);
+    if (found < 0) break;
+    const delta = Math.abs(found / origLen - seedRatio);
+    if (delta < bestDelta) { bestDelta = delta; bestPos = found; }
+    pos = found + 1;
+  }
+
+  return bestPos >= 0 ? bestPos / origLen : seedRatio;
+}
+
+// Helper: given a wordIdx and click canvas-X, return the specific word text
+// and its estimated bounding box (proportional split within the item).
+function getClickedWordInfo(wordIdx, cx) {
+  const wItem    = pageWords.items[wordIdx];
+  const fullText = wItem.text.trim();
+  const fontH    = Math.max(wItem.bot - wItem.top, 10);
+  const spanW    = Math.max(wItem.maxX - wItem.minX, 1);
+
+  // CJK - split by character
+  const isCJK = /[぀-ヿ　-鿿豈-﫿㐀-䶿가-힯]/.test(fullText);
+  if (isCJK) {
+    const chars = [...fullText].filter(c => c.trim());
+    if (chars.length > 1) {
+      const cw = spanW / chars.length;
+      const ci = Math.max(0, Math.min(chars.length - 1, Math.floor((cx - wItem.minX) / cw)));
+      return {
+        word: chars.slice(ci, ci + 2).join(''),
+        box: { minX: wItem.minX + ci * cw, maxX: wItem.minX + (ci + 2) * cw, top: wItem.top, bot: wItem.bot },
+        context: fullText,
+      };
+    }
+    return { word: fullText, box: wItem, context: fullText };
+  }
+
+  // Western - proportional by character count
+  const parts = fullText.split(/\s+/).filter(Boolean);
+  if (parts.length > 1) {
+    const totalChars = parts.reduce((s, w) => s + w.length, 0) + (parts.length - 1) * 0.5;
+    const starts = []; let acc = 0;
+    for (let i = 0; i < parts.length; i++) {
+      starts.push(acc / totalChars);
+      acc += parts[i].length + (i < parts.length - 1 ? 0.5 : 0);
+    }
+    starts.push(1);
+    const xFrac = Math.max(0, Math.min(0.9999, (cx - wItem.minX) / spanW));
+    let wi = parts.length - 1;
+    for (let i = 0; i < parts.length; i++) { if (xFrac < starts[i + 1]) { wi = i; break; } }
+    return {
+      word: parts[wi],
+      box: { minX: wItem.minX + starts[wi] * spanW, maxX: wItem.minX + starts[wi + 1] * spanW, top: wItem.top, bot: wItem.bot },
+      context: fullText,
+    };
+  }
+
+  // Single word - estimated tight width
+  const estW = Math.min(fontH * fullText.length * 0.58, spanW);
+  return { word: fullText, box: { minX: wItem.minX, maxX: wItem.minX + estW, top: wItem.top, bot: wItem.bot }, context: fullText };
+}
+
+// ── Click overlay: click a word → highlight it + look up its meaning ─────────
+overlay.addEventListener('click', async e => {
+  const hasWords = pageWords && pageWords.items.length > 0;
+  if (!hasWords && !pageLines.length) return;
+
+  const rect  = pdfCanvas.getBoundingClientRect();
+  const scaleX = pdfCanvas.width  / rect.width;
+  const scaleY = pdfCanvas.height / rect.height;
+  const cx = (e.clientX - rect.left) * scaleX;
+  const cy = (e.clientY - rect.top)  * scaleY;
+
+  if (!overlayMode) hlCtx.clearRect(0, 0, hlCanvas.width, hlCanvas.height);
+
+  if (!hasWords) return;
+
+  const wordIdx = findNearestWord(cx, cy, pageWords.items);
+  if (wordIdx < 0) return;
+
+  const { word: raw, box, context } = getClickedWordInfo(wordIdx, cx);
+
+  // Highlight the specific word (not the whole line)
+  if (!overlayMode) {
+    const pad = 2;
+    hlCtx.fillStyle = 'rgba(59,130,246,0.35)';
+    hlCtx.fillRect(box.minX - pad, box.top - pad,
+      (box.maxX - box.minX) + pad * 2, (box.bot - box.top) + pad * 2);
+    // Subtle underline
+    hlCtx.fillStyle = 'rgba(37,99,235,0.8)';
+    hlCtx.fillRect(box.minX, box.bot, box.maxX - box.minX, 2);
+  }
+
+  // If this word is a hyphenated continuation (e.g. "irri-" + "gation"), merge for the query
+  let mergedWord = raw;
+  if (wordIdx > 0 && /^[a-zA-Z]/.test(raw)) {
+    const prevText = pageWords.items[wordIdx - 1].text.trimEnd();
+    if (prevText.endsWith('-')) {
+      const prevFrag = prevText.replace(/-$/, '').split(/\s+/).pop() || '';
+      if (prevFrag) mergedWord = prevFrag + raw.split(/\s+/)[0];
+    }
+  }
+
+  const clickedWord = mergedWord.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '').trim();
+  if (!clickedWord) return;
+
+  if (!apiKey) apiKey = (document.getElementById('api-key')?.value || localStorage.getItem('gemini_api_key') || '').trim();
+  if (!apiKey) {
+    showWordPopup(clickedWord, '請先設定 Gemini API Key', e.clientX, e.clientY);
+    return;
+  }
+
+  showWordPopup(clickedWord, '查詢中…', e.clientX, e.clientY);
+
+  try {
+    const res = await fetch('/word-meaning', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        word: clickedWord,
+        context,
+        target_lang: targetLang,
+        api_key: apiKey,
+        gemini_model: geminiModel,
+      }),
+    });
+    const data = await res.json();
+    showWordPopup(clickedWord, data.meaning || data.error || '查詢失敗', e.clientX, e.clientY);
+  } catch {
+    showWordPopup(clickedWord, '網路錯誤', e.clientX, e.clientY);
+  }
+});
+
+// ── Editable translation ──────────────────────────────────────────────────────
+function getNearestKnownSourceIndex(children, start, step) {
+  for (let i = start; i >= 0 && i < children.length; i += step) {
+    const sourceIdx = Number(children[i].dataset.sourceIdx);
+    if (Number.isFinite(sourceIdx)) return sourceIdx;
+  }
+  return Number.NaN;
+}
+
+function normalizeEditorBlocks(pageNum = Number(transBody.dataset.pageNum || 0)) {
+  const children = Array.from(transBody.children);
+  const pageIndex = Math.max(pageNum - 1, 0);
+  const fallbackBlocks =
+    pageBlockBlueprints[pageIndex] ||
+    translatedPageBlocks[pageIndex] ||
+    [];
+
+  children.forEach((node, index) => {
+    if (node.classList.contains('word-page-break')) return;
+    if (node.classList.contains('a4-page-break')) return;
+    const blockType = String(node.dataset.blockType || (node.classList.contains('trans-image-block') ? 'image' : 'text'));
+    node.dataset.blockType = blockType;
+    if (blockType === 'text') node.classList.add('trans-para');
+    let sourceIdx = Number(node.dataset.sourceIdx);
+    if (!Number.isFinite(sourceIdx)) {
+      const prevSourceIdx = getNearestKnownSourceIndex(children, index - 1, -1);
+      const nextSourceIdx = getNearestKnownSourceIndex(children, index + 1, 1);
+      const fallbackSourceIdx = Number(fallbackBlocks[index]?.source_idx);
+
+      if (Number.isFinite(prevSourceIdx) && Number.isFinite(nextSourceIdx) && prevSourceIdx !== nextSourceIdx) {
+        sourceIdx = (prevSourceIdx + nextSourceIdx) / 2;
+      } else if (Number.isFinite(prevSourceIdx)) {
+        sourceIdx = prevSourceIdx + TRANSLATION_BLOCK_STEP;
+      } else if (Number.isFinite(nextSourceIdx)) {
+        sourceIdx = nextSourceIdx - TRANSLATION_BLOCK_STEP;
+      } else if (Number.isFinite(fallbackSourceIdx)) {
+        sourceIdx = fallbackSourceIdx;
+      } else {
+        sourceIdx = index * TRANSLATION_BLOCK_STEP;
+      }
+    }
+
+    node.dataset.sourceIdx = String(formatSourceIndex(sourceIdx));
+    if (blockType === 'text') {
+      // ONLY set paraIdx if it doesn't exist, to preserve mapping to OCR boxes.
+      // Use source_idx rather than DOM index so inserted image blocks do not shift OCR paragraph ids.
+      if (node.dataset.paraIdx === undefined || node.dataset.paraIdx === null || node.dataset.paraIdx === '') {
+        const fallbackParaIdx = Number(fallbackBlocks[index]?.para_idx);
+        node.dataset.paraIdx = Number.isFinite(fallbackParaIdx)
+          ? String(fallbackParaIdx)
+          : String(Math.round(sourceIdx / TRANSLATION_BLOCK_STEP));
+      }
+    }
+  });
+}
+
+function renderTranslation(blocks, pageNum) {
+  const normalizedBlocks = normalizeBlockList(blocks, translatedPages[pageNum - 1] || '');
+  translatedPageBlocks[pageNum - 1] = cloneBlocks(normalizedBlocks);
+  transBody.innerHTML = normalizedBlocks
+    .map((block, i) => renderBlockHtml(block, i))
+    .join('');
+  transBody.dataset.pageNum = pageNum;
+  normalizeEditorBlocks();
+  updateWordPageEst();
+  updateFormatButtonState(null);
+  requestAnimationFrame(insertA4PageBreaks);
+}
+
+function renderBlockHtml(block, index) {
+  if (block.type === 'image') {
+    const safeName = escHtml(block.name || '圖片');
+    const safeUrl = escAttr(block.image_url || '');
+    const safeImageId = escAttr(block.image_id || '');
+    const w = Number(block.width || 0);
+    const imgStyle = w > 0 ? ` style="width:${w}px;max-width:100%;max-height:none;"` : '';
+    return `
+      <figure class="trans-image-block trans-block" contenteditable="false"
+        draggable="false"
+        data-block-type="image"
+        data-source-idx="${block.source_idx}"
+        data-image-id="${safeImageId}"
+        data-image-url="${safeUrl}"
+        data-image-name="${safeName}"
+        data-width="${w}"
+        data-height="${Number(block.height || 0)}">
+        <button type="button" class="image-remove-btn" title="刪除圖片">×</button>
+        <img src="${safeUrl}" alt="${safeName}" draggable="false"${imgStyle} />
+        <figcaption class="trans-image-meta">${safeName}</figcaption>
+        <div class="image-resize-handle" title="拖曳調整大小"></div>
+      </figure>
+    `;
+  }
+
+  const fs = Number(block.font_size) || 10;
+  const isBold = !!block.bold;
+  const paraIdx = Number(block.para_idx);
+  const fallbackParaIdx = Math.round(Number(block.source_idx || index * TRANSLATION_BLOCK_STEP) / TRANSLATION_BLOCK_STEP);
+  const dataParaIdx = Number.isFinite(paraIdx) ? paraIdx : fallbackParaIdx;
+  const inlineStyle = `font-size:${fs}pt;${isBold ? 'font-weight:bold;' : ''}`;
+  return `<p class="trans-para trans-block" data-block-type="text" data-source-idx="${block.source_idx}" data-para-idx="${dataParaIdx}" data-font-size="${fs}" data-bold="${isBold}" style="${inlineStyle}">${escHtml(block.text) || '<br>'}</p>`;
+}
+
+function setSaveState(text, state) {
+  saveStateEl.textContent = text;
+  saveStateEl.className = `save-state ${state}`;
+}
+
+function normalizeText(text) {
+  return (text || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+}
+
+function extractEditorBlocks(pageNum = Number(transBody.dataset.pageNum || 0)) {
+  normalizeEditorBlocks(pageNum);
+  const children = Array.from(transBody.children);
+  if (!children.length) {
+    const rawText = normalizeText(transBody.innerText || transBody.textContent || '');
+    return createBlocksFromText(rawText);
+  }
+
+  return children
+    .filter(n => !n.classList.contains('word-page-break') && !n.classList.contains('a4-page-break'))
+    .map((node, index) => {
+    const blockType = String(node.dataset.blockType || 'text');
+    if (blockType === 'image') {
+      const sourceIdx = Number(node.dataset.sourceIdx);
+      return {
+        type: 'image',
+        source_idx: Number.isFinite(sourceIdx)
+          ? formatSourceIndex(sourceIdx)
+          : formatSourceIndex(index * TRANSLATION_BLOCK_STEP),
+        image_id: String(node.dataset.imageId || ''),
+        image_url: String(node.dataset.imageUrl || ''),
+        name: String(node.dataset.imageName || ''),
+        width: Number(node.dataset.width || 0),
+        height: Number(node.dataset.height || 0),
+      };
+    }
+
+    const sourceIdx = Number(node.dataset.sourceIdx);
+    const paraIdx   = node.dataset.paraIdx;
+    return {
+      type: 'text',
+      source_idx: Number.isFinite(sourceIdx)
+        ? formatSourceIndex(sourceIdx)
+        : formatSourceIndex(index * TRANSLATION_BLOCK_STEP),
+      para_idx: (paraIdx !== undefined && paraIdx !== null) ? Number(paraIdx) : undefined,
+      text: normalizeText(node.innerText || node.textContent || '').replace(/\n$/, ''),
+      font_size: parseInt(node.dataset.fontSize || '10', 10),
+      bold: node.dataset.bold === 'true',
+    };
+  });
+}
+
+function syncEditorToState(pageNum = Number(transBody.dataset.pageNum || 0)) {
+  if (!pageNum) return { text: '', blocks: [] };
+  const blocks = extractEditorBlocks(pageNum);
+  const text = blocksToText(blocks);
+  translatedPageBlocks[pageNum - 1] = cloneBlocks(blocks);
+  translatedPages[pageNum - 1] = text;
+  return { text, blocks };
+}
+
+function getBlockFromNode(node) {
+  if (!node) return null;
+  if (node.nodeType === Node.ELEMENT_NODE) return node.closest('.trans-block');
+  return node.parentElement ? node.parentElement.closest('.trans-block') : null;
+}
+
+function getActiveInsertionBlock() {
+  if (activeEditorBlock && transBody.contains(activeEditorBlock)) return activeEditorBlock;
+  const selection = window.getSelection();
+  if (selection && selection.rangeCount > 0) {
+    const block = getBlockFromNode(selection.anchorNode);
+    if (block && transBody.contains(block)) return block;
+  }
+  if (currentHighPara && transBody.contains(currentHighPara)) return currentHighPara;
+  return transBody.lastElementChild;
+}
+
+function createImageBlockElement(image) {
+  const figure = document.createElement('figure');
+  figure.className = 'trans-image-block trans-block';
+  figure.contentEditable = 'false';
+  figure.draggable = false;
+  figure.dataset.blockType = 'image';
+  figure.dataset.imageId = image.image_id;
+  figure.dataset.imageUrl = image.image_url;
+  figure.dataset.imageName = image.name || '圖片';
+  figure.dataset.width = String(Number(image.width || 0));
+  figure.dataset.height = String(Number(image.height || 0));
+
+  const removeBtn = document.createElement('button');
+  removeBtn.type = 'button';
+  removeBtn.className = 'image-remove-btn';
+  removeBtn.title = '刪除圖片';
+  removeBtn.textContent = '×';
+
+  const img = document.createElement('img');
+  img.src = image.image_url;
+  img.alt = image.name || '圖片';
+  img.draggable = false;
+  const w = Number(image.width || 0);
+  if (w > 0) {
+    img.style.width = w + 'px';
+    img.style.maxWidth = '100%';
+    img.style.maxHeight = 'none';
+  }
+
+  const meta = document.createElement('figcaption');
+  meta.className = 'trans-image-meta';
+  meta.textContent = image.name || '圖片';
+
+  const resizeHandle = document.createElement('div');
+  resizeHandle.className = 'image-resize-handle';
+  resizeHandle.title = '拖曳調整大小';
+
+  figure.append(removeBtn, img, meta, resizeHandle);
+  return figure;
+}
+
+function insertImageBlock(image) {
+  const pageNum = Number(transBody.dataset.pageNum || 0);
+  if (!pageNum) return;
+
+  const block = createImageBlockElement(image);
+  const anchor = getActiveInsertionBlock();
+  if (anchor && anchor.parentElement === transBody) {
+    anchor.insertAdjacentElement('afterend', block);
+  } else {
+    transBody.appendChild(block);
+  }
+
+  normalizeEditorBlocks(pageNum);
+  activeEditorBlock = block;
+  block.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  scheduleSave();
+  scheduleA4PageBreaks();
+}
+
+async function uploadAndInsertImage(file) {
+  const pageNum = Number(transBody.dataset.pageNum || 0);
+  if (!currentJobId || !pageNum || !file) return;
+
+  const formData = new FormData();
+  formData.append('image', file);
+  setSaveState('上傳圖片中…', 'saving');
+
+  const response = await fetch(`/result/${currentJobId}/image`, {
+    method: 'POST',
+    body: formData,
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || data.error) {
+    throw new Error(data.error || '圖片上傳失敗');
+  }
+
+  insertImageBlock(data);
+}
+
+async function persistPage(pageNum, snapshot) {
+  if (!currentJobId || !pageNum) return true;
+
+  const pageIndex = pageNum - 1;
+  const normalizedBlocks = normalizeBlockList(
+    snapshot?.blocks,
+    snapshot?.text || translatedPages[pageIndex] || ''
+  );
+  const normalizedText = blocksToText(normalizedBlocks);
+  if (
+    normalizedText === normalizeText(savedPages[pageIndex] || '') &&
+    areBlocksEqual(normalizedBlocks, savedPageBlocks[pageIndex] || [])
+  ) {
+    setSaveState('已自動儲存', 'saved');
+    return true;
+  }
+
+  setSaveState('儲存中…', 'saving');
+  const r = await fetch(`/result/${currentJobId}/translation`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ page: pageNum, text: normalizedText, blocks: normalizedBlocks }),
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || d.error) throw new Error(d.error || '儲存失敗');
+
+  if (!areBlocksEqual(translatedPageBlocks[pageIndex] || [], normalizedBlocks)) {
+    return true;
+  }
+
+  savedPages[pageIndex] = normalizedText;
+  savedPageBlocks[pageIndex] = cloneBlocks(normalizedBlocks);
+  translatedPages[pageIndex] = normalizedText;
+  translatedPageBlocks[pageIndex] = cloneBlocks(normalizedBlocks);
+  setSaveState('已自動儲存', 'saved');
+  return true;
+}
+
+function scheduleSave() {
+  const pageNum = Number(transBody.dataset.pageNum || 0);
+  if (!pageNum || !currentJobId) return;
+
+  const snapshot = syncEditorToState(pageNum);
+
+  // Debounce translation overlay update to prevent lag during typing
+  if (overlayMode) {
+    clearTimeout(overlayTimer);
+    overlayTimer = setTimeout(() => {
+      renderOverlay(pageNum);
+    }, OVERLAY_DELAY_MS);
+  }
+
+  if (
+    normalizeText(snapshot.text) === normalizeText(savedPages[pageNum - 1] || '') &&
+    areBlocksEqual(snapshot.blocks, savedPageBlocks[pageNum - 1] || [])
+  ) {
+    setSaveState('已自動儲存', 'saved');
+    return;
+  }
+
+  clearTimeout(saveTimer);
+  setSaveState('儲存中…', 'saving');
+  saveTimer = setTimeout(async () => {
+    try {
+      await persistPage(pageNum, snapshot);
+    } catch (e) {
+      console.error(e);
+      setSaveState('儲存失敗', 'error');
+    }
+  }, SAVE_DELAY_MS);
+}
+
+async function persistRenderedPageNow() {
+  clearTimeout(saveTimer);
+
+  const pageNum = Number(transBody.dataset.pageNum || 0);
+  if (!pageNum || !currentJobId) return true;
+
+  const snapshot = syncEditorToState(pageNum);
+  try {
+    return await persistPage(pageNum, snapshot);
+  } catch (e) {
+    console.error(e);
+    setSaveState('儲存失敗', 'error');
+    return false;
+  }
+}
+
+transBody.addEventListener('input', () => {
+  scheduleSave();
+  updateWordPageEst();
+  scheduleA4PageBreaks();
+});
+
+transBody.addEventListener('click', e => {
+  const removeBtn = e.target.closest('.image-remove-btn');
+  if (removeBtn) {
+    const block = removeBtn.closest('.trans-block');
+    if (block) {
+      block.remove();
+      activeEditorBlock = null;
+      scheduleSave();
+      scheduleA4PageBreaks();
+    }
+    return;
+  }
+
+  const block = e.target.closest('.trans-block');
+  if (block) activeEditorBlock = block;
+});
+
+document.addEventListener('selectionchange', () => {
+  const selection = window.getSelection();
+  if (!selection || !selection.anchorNode) return;
+  const block = getBlockFromNode(selection.anchorNode);
+  if (block && transBody.contains(block)) activeEditorBlock = block;
+});
+
+insertImageBtn.addEventListener('click', () => {
+  if (!currentJobId) {
+    showErr('請先完成 PDF 處理，再插入圖片。');
+    return;
+  }
+  insertImageInput.value = '';
+  insertImageInput.click();
+});
+
+insertImageInput.addEventListener('change', async () => {
+  const file = insertImageInput.files?.[0];
+  if (!file) return;
+
+  hideErr();
+  try {
+    await uploadAndInsertImage(file);
+  } catch (e) {
+    console.error(e);
+    showErr(`圖片插入失敗：${e.message}`);
+    setSaveState('儲存失敗', 'error');
+  } finally {
+    insertImageInput.value = '';
+  }
+});
+
+// ── Paste image from clipboard ────────────────────────────────────────────────
+transBody.addEventListener('paste', async e => {
+  const items = e.clipboardData?.items;
+  if (!items) return;
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      e.preventDefault();
+      if (!currentJobId) { showErr('請先完成 PDF 處理，再貼上圖片。'); return; }
+      const file = item.getAsFile();
+      if (!file) return;
+      hideErr();
+      try {
+        await uploadAndInsertImage(file);
+      } catch (err) {
+        console.error(err);
+        showErr(`圖片貼上失敗：${err.message}`);
+        setSaveState('儲存失敗', 'error');
+      }
+      return;
+    }
+  }
+});
+
+// ── Image block drag-to-reorder ───────────────────────────────────────────────
+// Repair any image blocks that lost their structure after a native contenteditable drag.
+function prepareImageBlock(fig) {
+  fig.contentEditable = 'false';
+  fig.draggable = false;
+  fig.dataset.blockType = 'image';
+  if (!fig.classList.contains('trans-block')) fig.classList.add('trans-block');
+
+  let img = fig.querySelector('img');
+  if (!img && fig.dataset.imageUrl) {
+    img = document.createElement('img');
+    img.src = fig.dataset.imageUrl;
+    img.alt = fig.dataset.imageName || '圖片';
+    const before = fig.querySelector('.trans-image-meta,.image-resize-handle');
+    fig.insertBefore(img, before || null);
+  }
+  if (img) {
+    if (!img.getAttribute('src') && fig.dataset.imageUrl) img.src = fig.dataset.imageUrl;
+    if (!img.getAttribute('alt')) img.alt = fig.dataset.imageName || '圖片';
+    img.draggable = false;
+    const savedWidth = Number(fig.dataset.width || 0);
+    if (savedWidth > 0 && !img.style.width) {
+      img.style.width = savedWidth + 'px';
+      img.style.maxWidth = '100%';
+      img.style.maxHeight = 'none';
+    } else if (savedWidth <= 0 && img.style.width === '0px') {
+      img.style.removeProperty('width');
+      img.style.removeProperty('max-height');
+    }
+  }
+
+  fig.querySelectorAll('.image-remove-btn,.image-resize-handle').forEach(el => {
+    el.draggable = false;
+  });
+
+  if (!fig.querySelector('.image-resize-handle')) {
+    const h = document.createElement('div');
+    h.className = 'image-resize-handle';
+    h.title = '拖曳調整大小';
+    h.draggable = false;
+    fig.appendChild(h);
+  }
+}
+
+function repairImageBlocks() {
+  transBody.querySelectorAll('.trans-image-block').forEach(fig => {
+    prepareImageBlock(fig);
+  });
+}
+
+function getImageDragInsertBefore(clientY, draggedFigure) {
+  const blocks = Array.from(transBody.children).filter(el =>
+    el.classList.contains('trans-block') &&
+    !el.classList.contains('a4-page-break') &&
+    !el.classList.contains('word-page-break') &&
+    el !== draggedFigure
+  );
+
+  let closest = null;
+  let closestOffset = Number.NEGATIVE_INFINITY;
+  for (const block of blocks) {
+    const rect = block.getBoundingClientRect();
+    const offset = clientY - rect.top - rect.height / 2;
+    if (offset < 0 && offset > closestOffset) {
+      closestOffset = offset;
+      closest = block;
+    }
+  }
+  return closest;
+}
+
+let imageDragState = null;
+
+function getNextStableEditorSibling(node) {
+  let next = node.nextSibling;
+  while (
+    next &&
+    next.nodeType === Node.ELEMENT_NODE &&
+    (next.classList.contains('a4-page-break') || next.classList.contains('word-page-break'))
+  ) {
+    next = next.nextSibling;
+  }
+  return next;
+}
+
+function restoreImageDragPosition(state) {
+  if (!state?.originalParent || !state.figure) return;
+  if (state.originalNext && state.originalNext.parentNode === state.originalParent) {
+    state.originalParent.insertBefore(state.figure, state.originalNext);
+  } else {
+    state.originalParent.appendChild(state.figure);
+  }
+}
+
+function startImagePointerDrag(e, figure) {
+  prepareImageBlock(figure);
+  activeEditorBlock = figure;
+  imageDragState = {
+    figure,
+    pointerId: e.pointerId,
+    startX: e.clientX,
+    startY: e.clientY,
+    originalParent: figure.parentNode,
+    originalNext: getNextStableEditorSibling(figure),
+    dragging: false,
+  };
+  try { transBody.setPointerCapture(e.pointerId); } catch (_) {}
+}
+
+function beginImageReorderIfNeeded(e) {
+  if (!imageDragState || imageDragState.dragging) return;
+  const dx = e.clientX - imageDragState.startX;
+  const dy = e.clientY - imageDragState.startY;
+  if (Math.hypot(dx, dy) < 5) return;
+
+  imageDragState.dragging = true;
+  clearTimeout(a4BreakTimer);
+  transBody.querySelectorAll('.a4-page-break').forEach(el => el.remove());
+  imageDragState.figure.classList.add('dragging');
+}
+
+function autoScrollTranslationPane(clientY) {
+  const outer = document.getElementById('trans-pane-outer');
+  if (!outer) return;
+  const rect = outer.getBoundingClientRect();
+  const edge = 56;
+  if (clientY < rect.top + edge) {
+    outer.scrollTop -= 18;
+  } else if (clientY > rect.bottom - edge) {
+    outer.scrollTop += 18;
+  }
+}
+
+function finishImagePointerDrag(commit) {
+  const state = imageDragState;
+  if (!state) return;
+  const { figure, pointerId, dragging } = state;
+
+  if (!commit && dragging) restoreImageDragPosition(state);
+  figure.classList.remove('dragging');
+  prepareImageBlock(figure);
+  if (transBody.contains(figure)) activeEditorBlock = figure;
+  imageDragState = null;
+  try { transBody.releasePointerCapture(pointerId); } catch (_) {}
+
+  repairImageBlocks();
+  normalizeEditorBlocks();
+  if (dragging && commit) {
+    scheduleSave();
+  }
+  scheduleA4PageBreaks();
+}
+
+transBody.addEventListener('pointerdown', e => {
+  const figure = e.target.closest('.trans-image-block');
+  if (!figure || !transBody.contains(figure)) return;
+  if (e.button !== 0) return;
+  if (e.target.closest('.image-remove-btn,.image-resize-handle')) {
+    return;
+  }
+  e.preventDefault();
+  startImagePointerDrag(e, figure);
+});
+
+transBody.addEventListener('pointermove', e => {
+  if (!imageDragState || imageDragState.pointerId !== e.pointerId) return;
+  e.preventDefault();
+  beginImageReorderIfNeeded(e);
+  if (!imageDragState.dragging) return;
+  autoScrollTranslationPane(e.clientY);
+
+  const before = getImageDragInsertBefore(e.clientY, imageDragState.figure);
+  if (before) {
+    transBody.insertBefore(imageDragState.figure, before);
+  } else {
+    transBody.appendChild(imageDragState.figure);
+  }
+});
+
+transBody.addEventListener('pointerup', e => {
+  if (!imageDragState || imageDragState.pointerId !== e.pointerId) return;
+  e.preventDefault();
+  finishImagePointerDrag(true);
+});
+
+transBody.addEventListener('pointercancel', e => {
+  if (!imageDragState || imageDragState.pointerId !== e.pointerId) return;
+  finishImagePointerDrag(false);
+});
+
+document.addEventListener('pointerup', e => {
+  if (!imageDragState || imageDragState.pointerId !== e.pointerId) return;
+  finishImagePointerDrag(true);
+});
+
+document.addEventListener('pointercancel', e => {
+  if (!imageDragState || imageDragState.pointerId !== e.pointerId) return;
+  finishImagePointerDrag(false);
+});
+
+transBody.addEventListener('dragstart', e => {
+  if (e.target.closest('.trans-image-block')) e.preventDefault();
+});
+
+transBody.addEventListener('drop', e => {
+  requestAnimationFrame(() => { repairImageBlocks(); scheduleSave(); scheduleA4PageBreaks(); });
+});
+
+// ── Image resize drag ─────────────────────────────────────────────────────────
+let imgResizeState = null;
+
+transBody.addEventListener('mousedown', e => {
+  const handle = e.target.closest('.image-resize-handle');
+  if (!handle) return;
+  e.preventDefault();
+  e.stopPropagation();
+  const figure = handle.closest('.trans-image-block');
+  const img = figure.querySelector('img');
+  figure.classList.add('resizing');
+  imgResizeState = {
+    startX: e.clientX,
+    startWidth: img.getBoundingClientRect().width,
+    img,
+    figure,
+  };
+});
+
+document.addEventListener('mousemove', e => {
+  if (!imgResizeState) return;
+  const dx = e.clientX - imgResizeState.startX;
+  const newW = Math.max(40, Math.round(imgResizeState.startWidth + dx));
+  imgResizeState.img.style.width = newW + 'px';
+  imgResizeState.img.style.maxWidth = '100%';
+  imgResizeState.img.style.maxHeight = 'none';
+  imgResizeState.figure.dataset.width = String(newW);
+});
+
+document.addEventListener('mouseup', () => {
+  if (!imgResizeState) return;
+  imgResizeState.figure.classList.remove('resizing');
+  imgResizeState = null;
+  scheduleSave();
+});
+
+window.addEventListener('beforeunload', () => {
+  const pageNum = Number(transBody.dataset.pageNum || 0);
+  if (!currentJobId || !pageNum) return;
+
+  const snapshot = syncEditorToState(pageNum);
+  if (
+    normalizeText(snapshot.text) === normalizeText(savedPages[pageNum - 1] || '') &&
+    areBlocksEqual(snapshot.blocks, savedPageBlocks[pageNum - 1] || [])
+  ) return;
+
+  const payload = JSON.stringify({
+    page: pageNum,
+    text: snapshot.text,
+    blocks: snapshot.blocks,
+  });
+  navigator.sendBeacon(
+    `/result/${currentJobId}/translation`,
+    new Blob([payload], { type: 'application/json' })
+  );
+});
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function escAttr(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+// ── Word-meaning popup ─────────────────────────────────────────────────────────
+const sentPopup     = document.getElementById('sent-popup');
+const sentPopupWord = document.getElementById('sent-popup-word');
+const sentPopupText = document.getElementById('sent-popup-text');
+let sentTimer = null;
+
+function positionPopup(cx, cy) {
+  sentPopup.style.display = 'block';
+  const pw = 360, margin = 10;
+  let left = cx + margin, top = cy - 10;
+  if (left + pw > window.innerWidth - margin) left = cx - pw - margin;
+  const ph = sentPopup.offsetHeight || 120;
+  if (top + ph > window.innerHeight - margin) top = window.innerHeight - ph - margin;
+  if (top < margin) top = margin;
+  if (left < margin) left = margin;
+  sentPopup.style.left = left + 'px';
+  sentPopup.style.top  = top  + 'px';
+}
+
+function showWordPopup(word, meaning, cx, cy) {
+  sentPopupWord.textContent = word;
+  sentPopupText.textContent = meaning;
+  positionPopup(cx, cy);
+  clearTimeout(sentTimer);
+  sentTimer = setTimeout(hideSentPopup, 4000);
+}
+
+
+function hideSentPopup() { sentPopup.style.display = 'none'; }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') hideSentPopup(); });
+</script>
+
+</body></html>

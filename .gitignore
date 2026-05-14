@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
+venv/
+
+# PyInstaller build output
+build/
+dist/
+
+# Generated / runtime files
+_served_index.html
+*.log
+
+# User data
+data/
+
+# IDE / tool internals
+.claude/
+.sixth/
