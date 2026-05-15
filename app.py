@@ -1153,7 +1153,7 @@ def _extract_captioned_visuals(
         infos.append({
             "image_id": image_id,
             "y_frac": final_rect.y0 / page_h,
-            "order_key": final_rect.y0 / page_h,
+            "order_key": _visual_order_key(final_rect, page, text_blocks),
             "source_idx": _estimate_source_idx_from_text_blocks(page, final_rect, text_blocks),
         })
         exclude.append(final_rect)
@@ -1331,6 +1331,18 @@ def _extract_uncaptioned_image_blocks(
     infos: list[dict] = []
     exclude: list = []
 
+    _tb_for_order = [
+        b for b in page.get_text("blocks")
+        if len(b) >= 7 and b[6] == 0 and str(b[4]).strip()
+    ]
+    _two_col_gutter = None
+    if _page_has_side_by_side_columns(page, _tb_for_order):
+        narrow_tb = [b for b in _tb_for_order if (b[2] - b[0]) <= page_rect.width * 0.55]
+        left_tb = [b for b in narrow_tb if ((b[0] + b[2]) / 2) < page_rect.width * 0.5]
+        right_tb = [b for b in narrow_tb if ((b[0] + b[2]) / 2) >= page_rect.width * 0.5]
+        if left_tb and right_tb:
+            _two_col_gutter = (max(b[2] for b in left_tb), min(b[0] for b in right_tb))
+
     for i, rect in enumerate(img_rects):
         render_rect = fitz.Rect(rect)
         if detected_from_full_page_raster:
@@ -1355,7 +1367,8 @@ def _extract_uncaptioned_image_blocks(
         infos.append({
             "image_id": image_id,
             "y_frac": rect.y0 / page_h,
-            "order_key": rect.y0 / page_h,
+            "order_key": _visual_order_key(rect, page, _tb_for_order),
+            "source_idx": _estimate_source_idx_from_text_blocks(page, rect, _tb_for_order),
         })
         if detected_from_full_page_raster:
             # Hybrid native PDFs already have selectable body text over a full-page
@@ -1363,7 +1376,15 @@ def _extract_uncaptioned_image_blocks(
             exclude.append(_expanded_clip(rect, page_rect, margin=3))
         else:
             margin = min(max(rect.height * 0.25, 20), 50)
-            exclude.append(_expanded_clip(rect, page_rect, margin=margin))
+            ex = _expanded_clip(rect, page_rect, margin=margin)
+            if _two_col_gutter is not None and rect.width < page_rect.width * 0.55:
+                left_col_x1, right_col_x0 = _two_col_gutter
+                rect_cx = (rect.x0 + rect.x1) / 2
+                if rect_cx < page_rect.width * 0.5 and rect.x1 < right_col_x0:
+                    ex = fitz.Rect(ex.x0, ex.y0, min(ex.x1, right_col_x0 - 3), ex.y1)
+                elif rect_cx >= page_rect.width * 0.5 and rect.x0 > left_col_x1:
+                    ex = fitz.Rect(max(ex.x0, left_col_x1 + 3), ex.y0, ex.x1, ex.y1)
+            exclude.append(ex)
 
     return infos, exclude
 
@@ -3145,6 +3166,23 @@ def _extract_ocr_figure_images(
         page_h = max(page_rect.height, 1)
         page_w = max(page_rect.width, 1)
 
+        _word_mids = [(w["left"] + w["right"]) / 2 for w in words
+                      if w.get("right", 0) > w.get("left", 0)]
+        _lw = sum(1 for x in _word_mids if x < 0.46)
+        _rw = sum(1 for x in _word_mids if x > 0.54)
+        _two_col_ocr = (
+            len(_word_mids) >= 10
+            and _lw >= 5 and _rw >= 5
+            and min(_lw, _rw) / len(_word_mids) > 0.20
+        ) if _word_mids else False
+
+        def _ocr_order_key(r: fitz.Rect) -> float:
+            yf = max(0.0, min(1.0, r.y0 / page_h))
+            if not _two_col_ocr or (r.x1 - r.x0) > page_w * 0.55:
+                return yf
+            col = 0 if (r.x0 + r.x1) / 2 < page_w * 0.5 else 1
+            return (col + yf) / 2
+
         infos: list[dict] = []
 
         if not words:
@@ -3249,7 +3287,7 @@ def _extract_ocr_figure_images(
             infos.append({
                 "image_id": image_id,
                 "y_frac": y_frac,
-                "order_key": y_frac,
+                "order_key": _ocr_order_key(clip),
                 "left": clip.x0 / page_w,
                 "right": clip.x1 / page_w,
                 "top": clip.y0 / page_h,
@@ -3274,7 +3312,7 @@ def _extract_ocr_figure_images(
             infos.append({
                 "image_id": image_id,
                 "y_frac": y_frac,
-                "order_key": y_frac,
+                "order_key": _ocr_order_key(clip),
                 "left": clip.x0 / page_w,
                 "right": clip.x1 / page_w,
                 "top": clip.y0 / page_h,
@@ -3299,7 +3337,7 @@ def _extract_ocr_figure_images(
             infos.append({
                 "image_id": image_id,
                 "y_frac": y_frac,
-                "order_key": y_frac,
+                "order_key": _ocr_order_key(clip),
                 "left": clip.x0 / page_w,
                 "right": clip.x1 / page_w,
                 "top": clip.y0 / page_h,
@@ -3324,7 +3362,7 @@ def _extract_ocr_figure_images(
             infos.append({
                 "image_id": image_id,
                 "y_frac": y_frac,
-                "order_key": y_frac,
+                "order_key": _ocr_order_key(clip),
                 "left": clip.x0 / page_w,
                 "right": clip.x1 / page_w,
                 "top": clip.y0 / page_h,
@@ -3349,7 +3387,7 @@ def _extract_ocr_figure_images(
             infos.append({
                 "image_id": image_id,
                 "y_frac": y_frac,
-                "order_key": y_frac,
+                "order_key": _ocr_order_key(clip),
                 "left": clip.x0 / page_w,
                 "right": clip.x1 / page_w,
                 "top": clip.y0 / page_h,
@@ -3375,7 +3413,7 @@ def _extract_ocr_figure_images(
             infos.append({
                 "image_id": image_id,
                 "y_frac": y_frac,
-                "order_key": y_frac,
+                "order_key": _ocr_order_key(clip),
                 "left": clip.x0 / page_w,
                 "right": clip.x1 / page_w,
                 "top": clip.y0 / page_h,
